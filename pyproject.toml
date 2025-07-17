@@ -1,0 +1,24 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["venv", "__pycache__", "alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # E = pycodestyle, F = pyflakes, I = isort
+fixable = ["ALL"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+show_error_codes = true
+pretty = true
+exclude = "venv"
+
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
