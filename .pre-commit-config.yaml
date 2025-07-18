@@ -13,10 +13,12 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
+        args: ["--install-types", "--non-interactive"]
         additional_dependencies:
+          - pytest
+          - pytest-mypy-plugins
           - types-requests
-          - sqlalchemy
-          - sqlalchemy[mypy]
+          - "sqlalchemy[mypy]==2.0.41"
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

@@ -4,8 +4,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 
 from sync_hostaway.config import SCHEMA
-
-from .base import Base
+from sync_hostaway.models.base import Base
 
 
 class MessageThread(Base):

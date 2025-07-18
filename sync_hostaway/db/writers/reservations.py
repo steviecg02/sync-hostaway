@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
@@ -11,7 +12,7 @@ from sync_hostaway.models.reservations import Reservation
 logger = logging.getLogger(__name__)
 
 
-def insert_reservations(engine: Engine, data: list[dict], dry_run: bool = False) -> None:
+def insert_reservations(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:
     """
     Upsert reservations into the database.
 

@@ -56,4 +56,4 @@ format:
 clean:
 	find . -type f -name '*.pyc' -delete
 	find . -type d -name '__pycache__' -exec rm -r {} +
-	rm -rf .pytest_cache .ruff_cache venv
+	rm -rf .pytest_cache .mypy_cache .ruff_cache venv

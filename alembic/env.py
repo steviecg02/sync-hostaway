@@ -1,11 +1,15 @@
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.schema import CreateSchema
 
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
 from sync_hostaway.config import DATABASE_URL, SCHEMA
 from sync_hostaway.models.base import Base
+from sync_hostaway.models.listings import Listing  # noqa: F401
+from sync_hostaway.models.messages import MessageThread  # noqa: F401
+from sync_hostaway.models.reservations import Reservation  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -29,7 +33,13 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL)
 # ... etc.
 
 
-def include_object(object_, name, type_, reflected, compare_to):
+def include_object(
+    object_: Any,
+    name: str,
+    type_: str,
+    reflected: bool,
+    compare_to: Any,
+) -> bool:
     if hasattr(object_, "schema") and object_.schema != "hostaway":
         return False
     return True

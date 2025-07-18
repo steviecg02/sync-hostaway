@@ -1,14 +1,15 @@
 import json
 import logging
+from typing import Any
 
 from sync_hostaway.config import DEBUG
-from sync_hostaway.hostaway_api.auth import get_access_token
-from sync_hostaway.hostaway_api.client import fetch_paginated
+from sync_hostaway.network.auth import get_access_token
+from sync_hostaway.network.client import fetch_paginated
 
 logger = logging.getLogger(__name__)
 
 
-def poll_reservations() -> list[dict]:
+def poll_reservations() -> list[dict[str, Any]]:
     """
     Fetch raw reservation data from Hostaway's /reservations endpoint.
 

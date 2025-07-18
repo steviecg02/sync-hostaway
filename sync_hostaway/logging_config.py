@@ -3,7 +3,7 @@ import logging
 from sync_hostaway.config import LOG_LEVEL
 
 
-def setup_logging():
+def setup_logging() -> None:
     """
     Configures logging globally, with file + line number, and suppresses noisy libraries.
     """

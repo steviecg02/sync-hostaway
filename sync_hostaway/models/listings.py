@@ -1,12 +1,9 @@
-# models/listings.py
-
 from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
 from sync_hostaway.config import SCHEMA
-
-from .base import Base
+from sync_hostaway.models.base import Base
 
 
 class Listing(Base):

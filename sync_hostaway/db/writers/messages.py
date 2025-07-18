@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
@@ -10,7 +11,7 @@ from sync_hostaway.models.messages import MessageThread
 logger = logging.getLogger(__name__)
 
 
-def insert_messages(engine: Engine, data: list[dict], dry_run: bool = False) -> None:
+def insert_messages(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:
     """
     Upsert normalized messages into the database.
     Only updates if the messages field has changed.

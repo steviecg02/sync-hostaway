@@ -1,7 +1,7 @@
 """create listings, reservations, messages
 
 Revision ID: 0bb7b9b7ad01
-Revises: 
+Revises:
 Create Date: 2025-07-16 13:02:43.136787
 
 """
@@ -11,7 +11,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-from alembic import op
+from alembic import op  # type: ignore[attr-defined]
 
 # revision identifiers, used by Alembic.
 revision: str = "0bb7b9b7ad01"
