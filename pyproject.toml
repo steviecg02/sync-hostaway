@@ -1,0 +1,33 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["venv", "__pycache__", "alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # E = pycodestyle, F = pyflakes, I = isort
+fixable = ["ALL"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+show_error_codes = true
+pretty = true
+exclude = "venv"
+explicit_package_bases = true
+namespace_packages = true
+files = ["sync_hostaway"]
+
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
+markers = [
+  "unit: Fast, isolated tests for individual functions or classes",
+  "integration: Tests for interactions between multiple components (e.g. API + service)",
+  "functional: Tests for full feature workflows (e.g. reservation sync, message polling)",
+  "e2e: True end-to-end tests simulating external API calls, DB writes, and full system flows"
+]
