@@ -6,6 +6,7 @@ from sqlalchemy.schema import CreateSchema
 
 from alembic import context  # type: ignore[attr-defined]
 from sync_hostaway.config import DATABASE_URL, SCHEMA
+from sync_hostaway.models.accounts import Account  # noqa: F401
 from sync_hostaway.models.base import Base
 from sync_hostaway.models.listings import Listing  # noqa: F401
 from sync_hostaway.models.messages import MessageThread  # noqa: F401
@@ -69,6 +70,11 @@ def run_migrations_offline() -> None:
     )
 
     with context.begin_transaction():
+        import pprint
+
+        print("\n🔍 Alembic detected tables:\n")
+        pprint.pprint([t.name for t in Base.metadata.sorted_tables])
+        print()
         context.run_migrations()
 
 

@@ -15,3 +15,7 @@ def setup_logging() -> None:
     # Suppress noise from common libraries
     for noisy_logger in ["urllib3", "requests", "botocore", "boto3"]:
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+    # Add to suppress uvicorn noise
+    for uvicorn_logger in ["uvicorn.access", "uvicorn.error"]:
+        logging.getLogger(uvicorn_logger).setLevel(logging.WARNING)

@@ -11,13 +11,16 @@ from sync_hostaway.models.messages import MessageThread
 logger = logging.getLogger(__name__)
 
 
-def insert_messages(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:
+def insert_messages(
+    engine: Engine, account_id: int, data: list[dict[str, Any]], dry_run: bool = False
+) -> None:
     """
     Upsert normalized messages into the database.
     Only updates if the messages field has changed.
 
     Args:
         engine: SQLAlchemy Engine
+        account_id: Hostaway Account ID
         data: List of normalized message thread dicts (one per reservation)
         dry_run: If True, skip DB writes and log only
     """
@@ -31,6 +34,10 @@ def insert_messages(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
 
     if DEBUG:
         logger.info(f"Sample message thread to upsert {json.dumps(data[0], default=str, indent=2)}")
+
+    # Normalize all rows to include account_id explicitly
+    for r in data:
+        r["account_id"] = account_id
 
     with engine.begin() as conn:
         stmt = insert(MessageThread).values(data)

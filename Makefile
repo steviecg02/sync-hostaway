@@ -13,6 +13,7 @@ help:
 	@echo "  make lint            Run linter (ruff)"
 	@echo "  make format          Format code (black + ruff)"
 	@echo "  make clean           Remove __pycache__ and .pyc files"
+	@echo "  make run-api         Start FastAPI server on port 8000 (dev mode)"
 	@echo ""
 
 install:
@@ -57,3 +58,6 @@ clean:
 	find . -type f -name '*.pyc' -delete
 	find . -type d -name '__pycache__' -exec rm -r {} +
 	rm -rf .pytest_cache .mypy_cache .ruff_cache venv
+
+run-api:
+	uvicorn sync_hostaway.main:app --host 0.0.0.0 --port 8000 --reload

@@ -1,12 +1,8 @@
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import create_engine
 
 from sync_hostaway.config import DATABASE_URL
 
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set.")
 
-def get_engine() -> Engine:
-    """
-    Returns a SQLAlchemy engine using DATABASE_URL.
-    """
-    if not DATABASE_URL:
-        raise Exception("DATABASE_URL is not set in environment.")
-    return create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, future=True)

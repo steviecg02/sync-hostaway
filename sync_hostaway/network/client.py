@@ -1,11 +1,18 @@
+"""
+Client module for fetching paginated resources from the Hostaway API
+with support for retries, rate limiting, token refresh, and concurrency.
+"""
+
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from math import ceil
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import urljoin
 
 import requests
+
+from sync_hostaway.network.auth import get_or_refresh_token
 
 logger = logging.getLogger(__name__)
 
@@ -18,21 +25,21 @@ MAX_RETRIES = 2
 
 def should_retry(res: Optional[requests.Response], err: Optional[Exception]) -> bool:
     """
-    Determine whether a request should be retried based on the response or exception.
+    Determine whether the request should be retried based on response or error.
 
     Args:
-        res (Optional[requests.Response]): The HTTP response object (if any).
-        err (Optional[Exception]): The raised exception (if any).
+        res (Optional[requests.Response]): Response object if available.
+        err (Optional[Exception]): Exception raised by the request, if any.
 
     Returns:
-        bool: True if retry should be attempted, False otherwise.
+        bool: True if the request should be retried, False otherwise.
     """
     if res and res.status_code == 429:
-        return True  # Rate limited
+        return True
     if isinstance(err, requests.Timeout):
-        return True  # Transient network issue
+        return True
     if res and 500 <= res.status_code < 600:
-        return True  # Server error
+        return True
     return False
 
 
@@ -42,39 +49,55 @@ def fetch_page(
     page_number: int = 0,
     offset: Optional[int] = None,
     limit: Optional[int] = 100,
-) -> dict[str, Any]:
+    account_id: Optional[int] = None,
+) -> Tuple[Dict[str, Any], int]:
     """
-    Fetch a single page of results from a Hostaway API endpoint with bounded retry logic.
+    Fetch a single page of results from a Hostaway API endpoint.
 
     Args:
-        endpoint (str): Relative Hostaway API endpoint (e.g., "listings").
+        endpoint (str): The Hostaway API endpoint (e.g. 'reservations').
         token (str): Bearer token for Hostaway authentication.
-        page_number (int, optional): Page number to fetch. Defaults to 0.
-        offset (Optional[int], optional): Offset parameter for pagination. Defaults to None.
-        limit (Optional[int], optional): Maximum number of records per page. Defaults to 100.
+        page_number (int, optional): Page number for offset calculation. Defaults to 0.
+        offset (Optional[int], optional): Explicit offset override. Defaults to None.
+        limit (Optional[int], optional): Max records per page. Defaults to 100.
+        account_id (Optional[int], optional): Hostaway account ID (used for token refresh).
+                                              Defaults to None.
 
     Returns:
-        dict: Parsed JSON response from Hostaway API.
+        Tuple[Dict[str, Any], int]: A tuple of the JSON response and HTTP status code.
 
     Raises:
-        requests.RequestException: If the request ultimately fails after retries.
+        requests.RequestException: If the request fails after all retries.
     """
     url = urljoin(BASE_URL, endpoint)
     headers = {"Authorization": f"Bearer {token}"}
-    params = {"limit": 100, "page": page_number}
-    if offset is not None:
-        params["offset"] = offset
+    page_limit = limit or 100
+    params = {
+        "limit": page_limit,
+        "offset": offset if offset is not None else page_number * page_limit,
+    }
 
     retries = 0
 
     while True:
         try:
-            logger.debug("Requesting %s page=%d offset=%s", endpoint, page_number, offset)
+            logger.debug("Requesting %s offset=%s", endpoint, params["offset"])
             res = requests.get(url, headers=headers, params=params, timeout=5)
+
+            if res.status_code == 403 and account_id is not None:
+                logger.warning(
+                    "403 Unauthorized on %s offset=%s; refreshing token", endpoint, params["offset"]
+                )
+                token = get_or_refresh_token(account_id, prev_token=token)
+                headers["Authorization"] = f"Bearer {token}"
+                retries += 1
+                if retries > MAX_RETRIES:
+                    res.raise_for_status()
+                continue
 
             if res.status_code == 429:
                 logger.warning(
-                    "Rate limited on page %d. Sleeping %.1fs", page_number, REQUEST_DELAY * 2
+                    "Rate limited on offset=%s. Sleeping %.1fs", params["offset"], REQUEST_DELAY * 2
                 )
                 time.sleep(REQUEST_DELAY * 2)
                 retries += 1
@@ -83,33 +106,37 @@ def fetch_page(
                 continue
 
             res.raise_for_status()
-            return cast(dict[str, Any], res.json())
+            return cast(Dict[str, Any], res.json()), res.status_code
 
         except requests.RequestException as err:
-            logger.warning("Error fetching %s page=%d: %s", endpoint, page_number, str(err))
+            logger.warning("Error fetching %s offset=%s: %s", endpoint, params["offset"], str(err))
             retries += 1
-
             if retries > MAX_RETRIES or not should_retry(res if "res" in locals() else None, err):
                 raise
+            time.sleep(REQUEST_DELAY * retries)
 
-            time.sleep(REQUEST_DELAY * retries)  # Linear backoff
 
-
-def fetch_paginated(endpoint: str, token: str, limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+def fetch_paginated(
+    endpoint: str,
+    account_id: int,
+    limit: Optional[int] = 100,
+) -> List[Dict[str, Any]]:
     """
-    Fetch all records from a paginated Hostaway endpoint using concurrency.
+    Fetch all paginated results from a Hostaway endpoint.
 
     Args:
-        endpoint (str): The Hostaway API endpoint to fetch from (e.g., 'listings', 'reservations').
-        token (str): The Bearer token used for authentication with the Hostaway API.
-        limit (Optional[int], optional): Maximum number of records per page. Defaults to 100.
+        endpoint (str): The Hostaway API endpoint (e.g. 'reservations', 'messages').
+        account_id (int): Hostaway account ID used for auth and token refresh.
+        limit (Optional[int], optional): Max number of records per page. Defaults to 100.
 
     Returns:
-        List[Dict]: A combined list of all result records retrieved from all pages.
+        List[Dict[str, Any]]: Flattened list of all items across all pages.
     """
-    first = fetch_page(endpoint=endpoint, token=token, page_number=0, limit=limit)
-    results = list(first.get("result", []))
-    total_count = first.get("count", len(results))
+    token = get_or_refresh_token(account_id)
+
+    first_page, _ = fetch_page(endpoint, token, page_number=0, limit=limit, account_id=account_id)
+    results = list(first_page.get("result", []))
+    total_count = first_page.get("count", len(results))
     total_pages = ceil(total_count / limit)
 
     logger.info("Fetching %d total records across %d pages", total_count, total_pages)
@@ -117,10 +144,13 @@ def fetch_paginated(endpoint: str, token: str, limit: Optional[int] = 100) -> Li
     if total_pages > 1:
         with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as pool:
             futures = [
-                pool.submit(fetch_page, endpoint, token, i, limit) for i in range(1, total_pages)
+                pool.submit(
+                    fetch_page, endpoint, token, page_number=i, limit=limit, account_id=account_id
+                )
+                for i in range(1, total_pages)
             ]
             for future in as_completed(futures):
-                response = future.result()
-                results.extend(response.get("result", []))
+                page_data, _ = future.result()
+                results.extend(page_data.get("result", []))
 
     return results

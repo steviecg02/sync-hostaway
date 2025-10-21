@@ -1,7 +1,7 @@
 # models/reservations.py
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
 
 from sync_hostaway.config import SCHEMA
@@ -13,11 +13,17 @@ class Reservation(Base):
     __table_args__ = {"schema": SCHEMA}
 
     id = Column(Integer, primary_key=True, autoincrement=False)  # Hostaway reservation ID
+    account_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.accounts.account_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    customer_id = Column(UUID, nullable=True, index=True)  # To be defined
     listing_id = Column(
         Integer, ForeignKey(f"{SCHEMA}.listings.id", ondelete="CASCADE"), nullable=False
     )
     raw_payload = Column(JSONB, nullable=False)
-
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
