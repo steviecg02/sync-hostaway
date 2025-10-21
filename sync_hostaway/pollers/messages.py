@@ -4,29 +4,27 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
 from sync_hostaway.config import DEBUG
-from sync_hostaway.network.auth import get_access_token
 from sync_hostaway.network.client import fetch_paginated
 
 logger = logging.getLogger(__name__)
 
-BASE_URL = "https://api.hostaway.com/v1/"
 
-
-def poll_messages() -> List[Dict[str, Any]]:
+def poll_messages(account_id: int) -> List[Dict[str, Any]]:
     """
-    Polls Hostaway API for all conversations and their messages.
+    Polls Hostaway API for all conversations and their messages for the given account.
     Returns a flat list of raw message dicts.
 
+    Args:
+        account_id (int): Hostaway account ID
+
     Returns:
-        List[Dict]: A flat list of all mconversations.
+        List[Dict]: A flat list of all conversations and messages.
     """
-    token = get_access_token()
+    conversations = fetch_paginated("conversations", account_id=account_id)
+    logger.info(f"Found {len(conversations)} conversations [account_id={account_id}]")
 
-    conversations = fetch_paginated("conversations", token)
-    logger.info(f"Found {len(conversations)} conversations")
-
-    messages = _fetch_all_conversation_messages(conversations, token)
-    logger.info(f"Fetched {len(messages)} total messages")
+    messages = _fetch_all_conversation_messages(conversations, account_id)
+    logger.info(f"Fetched {len(messages)} total messages [account_id={account_id}]")
 
     if DEBUG and messages:
         logger.debug("Sample message:\n%s", json.dumps(messages[0], indent=2))
@@ -35,7 +33,7 @@ def poll_messages() -> List[Dict[str, Any]]:
 
 
 def _fetch_all_conversation_messages(
-    conversations: List[Dict[str, Any]], token: str
+    conversations: List[Dict[str, Any]], account_id: int
 ) -> List[Dict[str, Any]]:
     """
     Fetch all messages for each conversation using concurrent requests.
@@ -44,13 +42,10 @@ def _fetch_all_conversation_messages(
     `/conversations/{id}/messages` endpoint and uses the paginated fetch client
     to retrieve all messages (across all pages) for that conversation.
 
-    All conversations are processed concurrently, while pagination within
-    each conversation is handled sequentially by `fetch_paginated()`.
-
     Args:
         conversations (List[Dict]): A list of raw Hostaway conversation objects,
             each containing an "id" field.
-        token (str): Hostaway API bearer token.
+        account_id (int): Hostaway account ID
 
     Returns:
         List[Dict]: A flat list of all message dicts across all conversations.
@@ -60,7 +55,7 @@ def _fetch_all_conversation_messages(
     def fetch(convo: Dict[str, Any]) -> List[Dict[str, Any]]:
         convo_id = convo["id"]
         endpoint = f"conversations/{convo_id}/messages"
-        return fetch_paginated(endpoint, token)
+        return fetch_paginated(endpoint, account_id=account_id)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = [pool.submit(fetch, convo) for convo in conversations]

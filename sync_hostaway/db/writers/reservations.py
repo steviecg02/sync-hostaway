@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert
@@ -12,29 +12,49 @@ from sync_hostaway.models.reservations import Reservation
 logger = logging.getLogger(__name__)
 
 
-def insert_reservations(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:
+def insert_reservations(
+    engine: Engine, account_id: int, data: list[dict[str, Any]], dry_run: bool = False
+) -> None:
     """
-    Upsert reservations into the database.
+    Upsert reservations into the database — only update if raw_payload has changed.
 
     Args:
         engine: SQLAlchemy Engine
+        account_id: Hostaway Account ID
         data: List of raw Hostaway reservation payloads (dicts)
         dry_run: If True, skip DB writes and log only
     """
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
+
+    from collections import Counter
+
+    ids = [r["id"] for r in data]
+    dups = [rid for rid, count in Counter(ids).items() if count > 1]
+    if dups:
+        logger.error("❌ Found %s duplicate reservation_id(s) in batch:", len(dups))
+        for rid in dups:
+            logger.error(" - reservation_id=%s, count=%s", rid, ids.count(rid))
 
     rows = []
-    for reservation in data:
-        reservation_id = reservation.get("id")
-        if not reservation_id:
-            logger.warning("Skipping reservation without ID")
+    for r in data:
+        reservation_id = r.get("id")
+        listing_id = r.get("listingMapId")
+
+        if not reservation_id or not account_id or not listing_id:
+            logger.warning("Skipping reservation with missing id/accountId/listingMapId")
+            if DEBUG:
+                logger.debug(
+                    "Payload with missing fields:\n%s", json.dumps(r, indent=2, default=str)
+                )
             continue
 
         rows.append(
             {
                 "id": reservation_id,
-                "listing_id": reservation["listingMapId"],
-                "raw_payload": reservation,
+                "account_id": account_id,
+                "customer_id": None,  # Optional: will populate later
+                "listing_id": listing_id,
+                "raw_payload": r,
                 "created_at": now,
                 "updated_at": now,
             }
@@ -49,9 +69,9 @@ def insert_reservations(engine: Engine, data: list[dict[str, Any]], dry_run: boo
         return
 
     if DEBUG:
-        logger.info(f"Sample reservation to upsert {json.dumps(rows[0], default=str, indent=2)}")
+        logger.info("Sample reservation to upsert:\n%s", json.dumps(rows[0], indent=2, default=str))
 
-    with engine.begin() as cur:
+    with engine.begin() as conn:
         stmt = insert(Reservation).values(rows)
 
         stmt = stmt.on_conflict_do_update(
@@ -65,6 +85,6 @@ def insert_reservations(engine: Engine, data: list[dict[str, Any]], dry_run: boo
             ),
         )
 
-        cur.execute(stmt)
+        conn.execute(stmt)
 
     logger.info(f"Upserted {len(rows)} reservations into DB")

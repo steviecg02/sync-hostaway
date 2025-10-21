@@ -30,8 +30,8 @@ def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str,
 
     for msg in raw_messages:
         reservation_id = msg.get("reservationId")
-        listing_id = msg.get("listingMapId")
-        if not reservation_id or not listing_id:
+        account_id = msg.get("accountId")
+        if not reservation_id or not account_id:
             continue  # Skip if key metadata missing
 
         # Determine timestamp
@@ -54,7 +54,7 @@ def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str,
             "sender": "them" if msg.get("isIncoming") else "us",
             "body": msg.get("body") or "",
             "conversation_id": msg.get("conversationId"),
-            "listing_id": listing_id,
+            "listing_id": msg.get("listingMapId"),
         }
 
         threads[(reservation_id)].append(message_obj)
@@ -68,6 +68,7 @@ def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str,
         normalized_threads.append(
             {
                 "reservation_id": reservation_id,
+                "account_id": account_id,
                 "raw_messages": sorted_messages,
                 "created_at": now,
                 "updated_at": now,

@@ -12,27 +12,33 @@ from sync_hostaway.models.listings import Listing
 logger = logging.getLogger(__name__)
 
 
-def insert_listings(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:
+def insert_listings(
+    engine: Engine, account_id: int, data: list[dict[str, Any]], dry_run: bool = False
+) -> None:
     """
     Upsert listings into the database — only update if raw_payload has changed.
 
     Args:
         engine: SQLAlchemy Engine
+        account_id: Hostaway Account ID
         data: List of raw Hostaway listing payloads (dicts)
         dry_run: If True, skip DB writes and log only
     """
     now = datetime.utcnow()
-
     rows = []
+
     for listing in data:
         listing_id = listing.get("id")
-        if not listing_id:
-            logger.warning("Skipping listing without ID")
+
+        if not listing_id or not account_id:
+            logger.warning("Skipping listing with missing id or accountId")
             continue
 
         rows.append(
             {
                 "id": listing_id,
+                "account_id": account_id,
+                "customer_id": None,  # Optional: will populate later
                 "raw_payload": listing,
                 "created_at": now,
                 "updated_at": now,
@@ -56,6 +62,7 @@ def insert_listings(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
         stmt = stmt.on_conflict_do_update(
             index_elements=["id"],
             set_={
+                "account_id": insert(Listing).excluded.account_id,
                 "raw_payload": insert(Listing).excluded.raw_payload,
                 "updated_at": insert(Listing).excluded.updated_at,
             },

@@ -3,9 +3,9 @@
 
     WORKDIR /app
 
-    # Install build tools for psycopg2-binary if needed
+    # Install build tools for psycopg2
     RUN apt-get update && apt-get install -y --no-install-recommends \
-        gcc libpq-dev curl && \
+        gcc g++ libpq-dev curl build-essential && \
         rm -rf /var/lib/apt/lists/*
 
     COPY requirements.txt dev-requirements.txt ./
@@ -17,6 +17,11 @@
     FROM python:3.11-slim AS runtime
 
     WORKDIR /app
+
+    # Install runtime dependencies for PostgreSQL
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq5 && \
+        rm -rf /var/lib/apt/lists/*
 
     # Copy installed dependencies from builder stage
     COPY --from=builder /install /usr/local
