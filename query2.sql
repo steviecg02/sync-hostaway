@@ -1,5 +1,5 @@
 WITH annotated AS (
-    SELECT 
+    SELECT
         metric_date,
         time::date AS poll_date,
         metric_date - time::date AS lookback,

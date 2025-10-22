@@ -119,53 +119,53 @@ def update_access_token(conn: Connection, account_id: int, token: str) -> None:
 def update_account(conn: Connection, account_id: int, data: dict[str, Any]) -> None:
     """
     Update account fields for an existing account.
-    
+
     Args:
         conn (Connection): SQLAlchemy DB connection.
         account_id (int): Hostaway account ID.
         data (dict): Fields to update (only non-None values)
     """
     from sqlalchemy import update
-    
+
     now = datetime.utcnow()
     data["updated_at"] = now
-    
-    stmt = update(Account).where(
-        Account.account_id == account_id
-    ).values(**data)
-    
+
+    stmt = update(Account).where(Account.account_id == account_id).values(**data)
+
     conn.execute(stmt)
 
 
 def soft_delete_account(conn: Connection, account_id: int) -> None:
     """
     Soft delete an account by setting is_active to False.
-    
+
     Args:
         conn (Connection): SQLAlchemy DB connection.
         account_id (int): Hostaway account ID.
     """
     from sqlalchemy import update
-    
+
     now = datetime.utcnow()
-    
-    stmt = update(Account).where(
-        Account.account_id == account_id
-    ).values(is_active=False, updated_at=now)
-    
+
+    stmt = (
+        update(Account)
+        .where(Account.account_id == account_id)
+        .values(is_active=False, updated_at=now)
+    )
+
     conn.execute(stmt)
 
 
 def hard_delete_account(conn: Connection, account_id: int) -> None:
     """
     Permanently delete an account from the database.
-    
+
     Args:
         conn (Connection): SQLAlchemy DB connection.
         account_id (int): Hostaway account ID.
     """
     from sqlalchemy import delete
-    
+
     stmt = delete(Account).where(Account.account_id == account_id)
     conn.execute(stmt)
 
@@ -182,9 +182,11 @@ def update_last_sync(conn: Connection, account_id: int) -> None:
 
     now = datetime.utcnow()
 
-    stmt = update(Account).where(
-        Account.account_id == account_id
-    ).values(last_sync_at=now, updated_at=now)
+    stmt = (
+        update(Account)
+        .where(Account.account_id == account_id)
+        .values(last_sync_at=now, updated_at=now)
+    )
 
     conn.execute(stmt)
 
@@ -202,9 +204,11 @@ def update_webhook_id(conn: Connection, account_id: int, webhook_id: int) -> Non
 
     now = datetime.utcnow()
 
-    stmt = update(Account).where(
-        Account.account_id == account_id
-    ).values(webhook_id=webhook_id, updated_at=now)
+    stmt = (
+        update(Account)
+        .where(Account.account_id == account_id)
+        .values(webhook_id=webhook_id, updated_at=now)
+    )
 
     conn.execute(stmt)
 

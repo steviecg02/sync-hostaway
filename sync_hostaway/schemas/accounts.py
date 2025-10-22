@@ -21,7 +21,9 @@ class AccountUpdatePayload(BaseModel):
     """
 
     customer_id: Optional[UUID] = Field(None, description="Internal customer UUID")
-    client_secret: Optional[str] = Field(None, description="Client secret for access token generation")
+    client_secret: Optional[str] = Field(
+        None, description="Client secret for access token generation"
+    )
     access_token: Optional[str] = Field(None, description="Access token (usually auto-generated)")
     webhook_login: Optional[str] = Field(None, description="Webhook authentication login")
     webhook_password: Optional[str] = Field(None, description="Webhook authentication password")

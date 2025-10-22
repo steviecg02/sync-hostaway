@@ -100,11 +100,11 @@ def get_access_token_only(conn: Connection, account_id: int) -> Optional[str]:
 def get_account_with_sync_status(conn: Connection, account_id: int) -> Optional[dict[str, Any]]:
     """
     Get account details including sync status for update operations.
-    
+
     Args:
         conn (Connection): SQLAlchemy DB connection.
         account_id (int): Hostaway account ID.
-    
+
     Returns:
         Optional[dict]: Account details including client_secret and last_sync_at
     """
@@ -120,9 +120,5 @@ def get_account_with_sync_status(conn: Connection, account_id: int) -> Optional[
     )
     row = result.fetchone()
     if row:
-        return {
-            "client_secret": row[0],
-            "last_sync_at": row[1],
-            "is_active": row[2]
-        }
+        return {"client_secret": row[0], "last_sync_at": row[1], "is_active": row[2]}
     return None

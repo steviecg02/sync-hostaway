@@ -116,10 +116,7 @@ def trigger_sync(
             dry_run=use_dry_run,
         )
 
-        logger.info(
-            "[POST /accounts/%s/sync] Sync triggered (dry_run=%s)",
-            account_id, use_dry_run
-        )
+        logger.info("[POST /accounts/%s/sync] Sync triggered (dry_run=%s)", account_id, use_dry_run)
 
         return {"message": f"Sync scheduled for account {account_id} (dry_run={use_dry_run})"}
 
@@ -138,12 +135,12 @@ def update_account_endpoint(
 ) -> dict[str, str]:
     """
     Update an existing account. Triggers sync if client_secret changed and never synced before.
-    
+
     Args:
         account_id: Hostaway account ID to update
         payload: Fields to update
         background_tasks: FastAPI background task runner
-    
+
     Returns:
         dict: Message confirming update
     """
@@ -151,29 +148,29 @@ def update_account_endpoint(
         with engine.begin() as conn:
             # Check if account exists and get current state
             account_info = get_account_with_sync_status(conn, account_id)
-            
+
             if not account_info or not account_info["is_active"]:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Account {account_id} not found or inactive",
                 )
-            
+
             # Build update dict with only non-None values
             update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
-            
+
             if not update_data:
                 return {"message": "No fields to update"}
-            
+
             # Execute update
             update_account(conn, account_id, update_data)
-            
+
             # Check if we should trigger sync
             client_secret_changed = (
-                "client_secret" in update_data and 
-                update_data["client_secret"] != account_info["client_secret"]
+                "client_secret" in update_data
+                and update_data["client_secret"] != account_info["client_secret"]
             )
             never_synced = account_info["last_sync_at"] is None
-            
+
             if client_secret_changed and never_synced:
                 background_tasks.add_task(
                     sync_account,
@@ -182,13 +179,15 @@ def update_account_endpoint(
                 )
                 logger.info(
                     "[PATCH /accounts/%s] Updated and triggered sync (credentials changed, never synced)",
-                    account_id
+                    account_id,
                 )
-                return {"message": f"Account {account_id} updated. Sync triggered (new credentials, never synced before)."}
-            
+                return {
+                    "message": f"Account {account_id} updated. Sync triggered (new credentials, never synced before)."
+                }
+
             logger.info("[PATCH /accounts/%s] Account updated", account_id)
             return {"message": f"Account {account_id} updated successfully"}
-    
+
     except HTTPException:
         raise
     except Exception:
@@ -203,11 +202,11 @@ def delete_account_endpoint(
 ) -> dict[str, str]:
     """
     Delete an account (soft delete by default).
-    
+
     Args:
         account_id: Hostaway account ID to delete
         soft: If True, soft delete (set is_active=false). If False, permanently delete.
-    
+
     Returns:
         dict: Message confirming deletion
     """
@@ -219,7 +218,7 @@ def delete_account_endpoint(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Account {account_id} not found",
                 )
-            
+
             if soft:
                 # Soft delete - set is_active to false
                 soft_delete_account(conn, account_id)
@@ -234,7 +233,7 @@ def delete_account_endpoint(
                 remove_account_from_cache(account_id)
                 logger.info("[DELETE /accounts/%s] Account hard deleted", account_id)
                 return {"message": f"Account {account_id} permanently deleted"}
-    
+
     except HTTPException:
         raise
     except Exception:

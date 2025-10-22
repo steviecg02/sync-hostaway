@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sync_hostaway.config import ALLOWED_ORIGINS
 from sync_hostaway.logging_config import setup_logging
 from sync_hostaway.routes.accounts import router as accounts_router
+from sync_hostaway.routes.health import router as health_router
 from sync_hostaway.routes.webhook import router as webhook_router
 
 # Initialize structured logging
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 # Register routers
+app.include_router(health_router, tags=["Health"])
 app.include_router(accounts_router, prefix="/hostaway", tags=["Accounts"])
 app.include_router(webhook_router, prefix="/hostaway", tags=["Webhooks"])
 

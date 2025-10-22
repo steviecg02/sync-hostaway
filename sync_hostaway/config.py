@@ -19,9 +19,7 @@ ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS")
 if not ALLOWED_ORIGINS_RAW:
     raise ValueError("ALLOWED_ORIGINS must be set in the environment")
 
-ALLOWED_ORIGINS: list[str] = [
-    origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",")
-]
+ALLOWED_ORIGINS: list[str] = [origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",")]
 
 # Webhook Authentication (Global credentials for all accounts)
 WEBHOOK_USERNAME = os.getenv("WEBHOOK_USERNAME", "")

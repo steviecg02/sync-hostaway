@@ -22,9 +22,7 @@ def test_poll_reservations_calls_dependencies(mock_fetch: MagicMock) -> None:
 @patch("sync_hostaway.pollers.reservations.fetch_paginated")
 @patch("sync_hostaway.pollers.reservations.logger")
 @patch("sync_hostaway.pollers.reservations.DEBUG", True)
-def test_poll_reservations_logs_sample(
-    mock_logger: MagicMock, mock_fetch: MagicMock
-) -> None:
+def test_poll_reservations_logs_sample(mock_logger: MagicMock, mock_fetch: MagicMock) -> None:
     """
     If DEBUG is True, the sample reservation should be logged.
     """

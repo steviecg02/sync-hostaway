@@ -3,6 +3,7 @@ Integration tests for /hostaway/accounts endpoints.
 
 Tests account CRUD operations (POST, PATCH, DELETE) with real database.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
