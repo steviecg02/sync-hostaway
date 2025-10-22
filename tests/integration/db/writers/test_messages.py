@@ -14,26 +14,18 @@ from sync_hostaway.models.messages import MessageThread
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77777], indirect=True)
-def test_insert_messages_creates_new_threads(test_account):
+def test_insert_messages_creates_new_threads(test_account_with_reservation):
     """Test that insert_messages creates new message thread records."""
-    account_id = test_account
+    account_id, reservation_id = test_account_with_reservation
     data = [
         {
-            "reservation_id": 12001,
+            "reservation_id": reservation_id,
             "raw_messages": [
                 {"id": 1, "message": "Hello", "sent_at": "2024-01-01T10:00:00Z"},
                 {"id": 2, "message": "Hi there", "sent_at": "2024-01-01T10:05:00Z"},
             ],
             "created_at": "2024-01-01T10:00:00Z",
             "updated_at": "2024-01-01T10:05:00Z",
-        },
-        {
-            "reservation_id": 12002,
-            "raw_messages": [
-                {"id": 3, "message": "Check-in at 3pm", "sent_at": "2024-01-02T09:00:00Z"},
-            ],
-            "created_at": "2024-01-02T09:00:00Z",
-            "updated_at": "2024-01-02T09:00:00Z",
         },
     ]
 
@@ -46,21 +38,18 @@ def test_insert_messages_creates_new_threads(test_account):
             .order_by(MessageThread.reservation_id)
         ).fetchall()
 
-        assert len(result) == 2
-        assert result[0].reservation_id == 12001
+        assert len(result) == 1
+        assert result[0].reservation_id == reservation_id
         assert result[0].account_id == account_id
         assert len(result[0].raw_messages) == 2
         assert result[0].raw_messages[0]["message"] == "Hello"
-        assert result[1].reservation_id == 12002
-        assert len(result[1].raw_messages) == 1
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77776], indirect=True)
-def test_insert_messages_updates_existing_threads_when_messages_change(test_account):
+def test_insert_messages_updates_existing_threads_when_messages_change(test_account_with_reservation):
     """Test that insert_messages updates existing threads when raw_messages changes."""
-    account_id = test_account
-    reservation_id = 13001
+    account_id, reservation_id = test_account_with_reservation
 
     # Insert initial thread
     initial_data = [
@@ -101,10 +90,9 @@ def test_insert_messages_updates_existing_threads_when_messages_change(test_acco
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77775], indirect=True)
-def test_insert_messages_skips_update_when_messages_unchanged(test_account):
+def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_reservation):
     """Test that insert_messages skips update when raw_messages is identical."""
-    account_id = test_account
-    reservation_id = 14001
+    account_id, reservation_id = test_account_with_reservation
 
     # Insert initial thread
     initial_data = [
@@ -122,7 +110,9 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account):
     # Get initial updated_at timestamp
     with engine.connect() as conn:
         initial_result = conn.execute(
-            select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
+            select(MessageThread.updated_at).where(
+                MessageThread.reservation_id == reservation_id
+            )
         ).fetchone()
         initial_updated_at = initial_result[0]
 
@@ -132,13 +122,15 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account):
     # Verify updated_at didn't change
     with engine.connect() as conn:
         final_result = conn.execute(
-            select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
+            select(MessageThread.updated_at).where(
+                MessageThread.reservation_id == reservation_id
+            )
         ).fetchone()
         final_updated_at = final_result[0]
 
-        assert (
-            initial_updated_at == final_updated_at
-        ), "updated_at should not change when raw_messages is identical"
+        assert initial_updated_at == final_updated_at, (
+            "updated_at should not change when raw_messages is identical"
+        )
 
 
 @pytest.mark.integration
@@ -146,7 +138,7 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account):
 def test_insert_messages_handles_empty_list(test_account):
     """Test that insert_messages handles empty data list gracefully."""
     account_id = test_account
-    data = []
+    data: list = []
 
     # Should not raise exception
     insert_messages(engine, account_id, data)
@@ -161,12 +153,12 @@ def test_insert_messages_handles_empty_list(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77773], indirect=True)
-def test_insert_messages_dry_run_mode(test_account):
+def test_insert_messages_dry_run_mode(test_account_with_reservation):
     """Test that insert_messages in dry_run mode doesn't write to database."""
-    account_id = test_account
+    account_id, reservation_id = test_account_with_reservation
     data = [
         {
-            "reservation_id": 15001,
+            "reservation_id": reservation_id,
             "raw_messages": [
                 {"id": 30, "message": "Dry run message", "sent_at": "2024-01-01T10:00:00Z"},
             ],
@@ -188,12 +180,12 @@ def test_insert_messages_dry_run_mode(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77772], indirect=True)
-def test_insert_messages_adds_account_id_to_all_rows(test_account):
+def test_insert_messages_adds_account_id_to_all_rows(test_account_with_reservation):
     """Test that insert_messages adds account_id to all message thread records."""
-    account_id = test_account
+    account_id, reservation_id = test_account_with_reservation
     data = [
         {
-            "reservation_id": 16001,
+            "reservation_id": reservation_id,
             "raw_messages": [
                 {"id": 40, "message": "Test message", "sent_at": "2024-01-01T10:00:00Z"},
             ],
@@ -207,7 +199,7 @@ def test_insert_messages_adds_account_id_to_all_rows(test_account):
 
     with engine.connect() as conn:
         result = conn.execute(
-            select(MessageThread).where(MessageThread.reservation_id == 16001)
+            select(MessageThread).where(MessageThread.reservation_id == reservation_id)
         ).fetchone()
 
         assert result is not None

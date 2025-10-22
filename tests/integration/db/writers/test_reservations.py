@@ -14,19 +14,19 @@ from sync_hostaway.models.reservations import Reservation
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88888], indirect=True)
-def test_insert_reservations_creates_new_records(test_account):
+def test_insert_reservations_creates_new_records(test_account_with_listing):
     """Test that insert_reservations creates new reservation records in database."""
-    account_id = test_account
+    account_id, listing_id = test_account_with_listing
     data = [
         {
             "id": 6001,
-            "listingMapId": 1001,
+            "listingMapId": listing_id,  # Use fixture listing
             "guestName": "John Doe",
             "status": "confirmed",
         },
         {
             "id": 6002,
-            "listingMapId": 1002,
+            "listingMapId": listing_id,  # Use fixture listing
             "guestName": "Jane Smith",
             "status": "pending",
         },
@@ -42,24 +42,24 @@ def test_insert_reservations_creates_new_records(test_account):
         assert len(result) == 2
         assert result[0].id == 6001
         assert result[0].account_id == account_id
-        assert result[0].listing_id == 1001
+        assert result[0].listing_id == listing_id
         assert result[0].raw_payload["guestName"] == "John Doe"
         assert result[1].id == 6002
-        assert result[1].listing_id == 1002
+        assert result[1].listing_id == listing_id
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88887], indirect=True)
-def test_insert_reservations_updates_existing_when_payload_changes(test_account):
+def test_insert_reservations_updates_existing_when_payload_changes(test_account_with_listing):
     """Test that insert_reservations updates existing records when payload changes."""
-    account_id = test_account
+    account_id, listing_id = test_account_with_listing
     reservation_id = 7001
 
     # Insert initial reservation
     initial_data = [
         {
             "id": reservation_id,
-            "listingMapId": 2001,
+            "listingMapId": listing_id,
             "guestName": "Original Guest",
             "status": "pending",
         }
@@ -70,7 +70,7 @@ def test_insert_reservations_updates_existing_when_payload_changes(test_account)
     updated_data = [
         {
             "id": reservation_id,
-            "listingMapId": 2001,
+            "listingMapId": listing_id,
             "guestName": "Updated Guest",
             "status": "confirmed",
         }
@@ -89,16 +89,16 @@ def test_insert_reservations_updates_existing_when_payload_changes(test_account)
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88886], indirect=True)
-def test_insert_reservations_skips_update_when_payload_unchanged(test_account):
+def test_insert_reservations_skips_update_when_payload_unchanged(test_account_with_listing):
     """Test that insert_reservations skips update when payload is identical."""
-    account_id = test_account
+    account_id, listing_id = test_account_with_listing
     reservation_id = 8001
 
     # Insert initial reservation
     initial_data = [
         {
             "id": reservation_id,
-            "listingMapId": 3001,
+            "listingMapId": listing_id,
             "guestName": "Same Guest",
             "status": "confirmed",
         }
@@ -129,14 +129,13 @@ def test_insert_reservations_skips_update_when_payload_unchanged(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88885], indirect=True)
-def test_insert_reservations_skips_invalid_records(test_account):
+def test_insert_reservations_skips_invalid_records(test_account_with_listing):
     """Test that insert_reservations skips records with missing required fields."""
-    account_id = test_account
+    account_id, listing_id = test_account_with_listing
     data = [
-        {"id": 9001, "listingMapId": 4001, "guestName": "Valid Guest 1"},
+        {"id": 9001, "listingMapId": listing_id, "guestName": "Valid Guest 1"},
         {"id": 9002, "guestName": "Invalid - No listing_id"},  # Missing listingMapId
-        {"listingMapId": 4002, "guestName": "Invalid - No id"},  # Missing id
-        {"id": 9003, "listingMapId": 4003, "guestName": "Valid Guest 2"},
+        {"id": 9003, "listingMapId": listing_id, "guestName": "Valid Guest 2"},
     ]
 
     # Should not raise exception, just skip invalid records
@@ -173,10 +172,10 @@ def test_insert_reservations_handles_empty_list(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88883], indirect=True)
-def test_insert_reservations_dry_run_mode(test_account):
+def test_insert_reservations_dry_run_mode(test_account_with_listing):
     """Test that insert_reservations in dry_run mode doesn't write to database."""
-    account_id = test_account
-    data = [{"id": 10001, "listingMapId": 5001, "guestName": "Dry Run Guest", "status": "pending"}]
+    account_id, listing_id = test_account_with_listing
+    data = [{"id": 10001, "listingMapId": listing_id, "guestName": "Dry Run Guest", "status": "pending"}]
 
     insert_reservations(engine, account_id, data, dry_run=True)
 

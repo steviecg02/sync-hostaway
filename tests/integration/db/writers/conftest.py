@@ -4,6 +4,7 @@ Shared fixtures for database writer integration tests.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Generator
 
 import pytest
@@ -56,3 +57,71 @@ def test_account(request: Any) -> Generator[int, None, None]:
             text("DELETE FROM hostaway.accounts WHERE account_id = :account_id"),
             {"account_id": account_id},
         )
+
+
+@pytest.fixture
+def test_account_with_listing(test_account: int) -> Generator[tuple[int, int], None, None]:
+    """
+    Create a test account with a test listing for reservation tests.
+
+    Returns tuple of (account_id, listing_id).
+    """
+    account_id = test_account
+    listing_id = 999999  # Fixed test listing ID
+
+    # Create test listing
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO hostaway.listings (id, account_id, raw_payload, created_at, updated_at)
+                VALUES (:id, :account_id, CAST(:payload AS jsonb), NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {
+                "id": listing_id,
+                "account_id": account_id,
+                "payload": json.dumps({"id": 999999, "name": "Test Listing"}),
+            },
+        )
+
+    yield (account_id, listing_id)
+
+    # Cleanup handled by test_account fixture
+
+
+@pytest.fixture
+def test_account_with_reservation(
+    test_account_with_listing: tuple[int, int]
+) -> Generator[tuple[int, int], None, None]:
+    """
+    Create a test account with listing and reservation for message tests.
+
+    Returns tuple of (account_id, reservation_id).
+    """
+    account_id, listing_id = test_account_with_listing
+    reservation_id = 888888  # Fixed test reservation ID
+
+    # Create test reservation
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO hostaway.reservations
+                (id, account_id, listing_id, raw_payload, created_at, updated_at)
+                VALUES (:id, :account_id, :listing_id, CAST(:payload AS jsonb), NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {
+                "id": reservation_id,
+                "account_id": account_id,
+                "listing_id": listing_id,
+                "payload": json.dumps({"id": 888888, "guestName": "Test Guest"}),
+            },
+        )
+
+    yield (account_id, reservation_id)
+
+    # Cleanup handled by test_account fixture
