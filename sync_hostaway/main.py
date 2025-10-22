@@ -1,7 +1,6 @@
 # sync_hostaway/main.py
 
-import logging
-
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +12,7 @@ from sync_hostaway.routes.webhook import router as webhook_router
 
 # Initialize structured logging
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 app = FastAPI(
     title="Hostaway Sync API",

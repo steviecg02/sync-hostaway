@@ -1,11 +1,12 @@
 import json
-import logging
 from typing import Any
+
+import structlog
 
 from sync_hostaway.config import DEBUG
 from sync_hostaway.network.client import fetch_paginated
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def poll_reservations(account_id: int) -> list[dict[str, Any]]:

@@ -4,11 +4,12 @@ Integration tests for /hostaway/accounts endpoints.
 Tests account CRUD operations (POST, PATCH, DELETE) with real database.
 """
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from unittest.mock import patch
 
 from sync_hostaway.main import app
 from sync_hostaway.models.base import Base

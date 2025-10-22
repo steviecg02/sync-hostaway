@@ -47,7 +47,9 @@ def test_insert_messages_creates_new_threads(test_account_with_reservation):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77776], indirect=True)
-def test_insert_messages_updates_existing_threads_when_messages_change(test_account_with_reservation):
+def test_insert_messages_updates_existing_threads_when_messages_change(
+    test_account_with_reservation,
+):
     """Test that insert_messages updates existing threads when raw_messages changes."""
     account_id, reservation_id = test_account_with_reservation
 
@@ -110,9 +112,7 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_
     # Get initial updated_at timestamp
     with engine.connect() as conn:
         initial_result = conn.execute(
-            select(MessageThread.updated_at).where(
-                MessageThread.reservation_id == reservation_id
-            )
+            select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
         ).fetchone()
         initial_updated_at = initial_result[0]
 
@@ -122,15 +122,13 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_
     # Verify updated_at didn't change
     with engine.connect() as conn:
         final_result = conn.execute(
-            select(MessageThread.updated_at).where(
-                MessageThread.reservation_id == reservation_id
-            )
+            select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
         ).fetchone()
         final_updated_at = final_result[0]
 
-        assert initial_updated_at == final_updated_at, (
-            "updated_at should not change when raw_messages is identical"
-        )
+        assert (
+            initial_updated_at == final_updated_at
+        ), "updated_at should not change when raw_messages is identical"
 
 
 @pytest.mark.integration

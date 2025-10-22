@@ -1,6 +1,6 @@
-import logging
-from typing import Any, Optional
+from typing import Optional
 
+import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 
 from sync_hostaway.config import DRY_RUN
@@ -16,7 +16,7 @@ from sync_hostaway.schemas.accounts import AccountCreatePayload, AccountUpdatePa
 from sync_hostaway.services.account_cache import remove_account_from_cache
 from sync_hostaway.services.sync import sync_account
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
@@ -62,7 +62,7 @@ def create_account(
             ],
         )
 
-        logger.info("[POST /accounts] Account %s inserted into DB", payload.account_id)
+        logger.info("account_created", account_id=payload.account_id)
 
         background_tasks.add_task(
             sync_account,
@@ -75,8 +75,8 @@ def create_account(
     except HTTPException:
         raise
 
-    except Exception:
-        logger.exception("Unexpected error during account creation")
+    except Exception as e:
+        logger.exception("account_creation_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -116,14 +116,14 @@ def trigger_sync(
             dry_run=use_dry_run,
         )
 
-        logger.info("[POST /accounts/%s/sync] Sync triggered (dry_run=%s)", account_id, use_dry_run)
+        logger.info("sync_triggered", account_id=account_id, dry_run=use_dry_run)
 
         return {"message": f"Sync scheduled for account {account_id} (dry_run={use_dry_run})"}
 
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("Unexpected error triggering sync for account %s", account_id)
+    except Exception as e:
+        logger.exception("sync_trigger_failed", account_id=account_id, error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -178,20 +178,24 @@ def update_account_endpoint(
                     dry_run=DRY_RUN,
                 )
                 logger.info(
-                    "[PATCH /accounts/%s] Updated and triggered sync (credentials changed, never synced)",
-                    account_id,
+                    "account_updated_sync_triggered",
+                    account_id=account_id,
+                    reason="credentials_changed_never_synced",
                 )
                 return {
-                    "message": f"Account {account_id} updated. Sync triggered (new credentials, never synced before)."
+                    "message": (
+                        f"Account {account_id} updated. "
+                        f"Sync triggered (new credentials, never synced before)."
+                    )
                 }
 
-            logger.info("[PATCH /accounts/%s] Account updated", account_id)
+            logger.info("account_updated", account_id=account_id)
             return {"message": f"Account {account_id} updated successfully"}
 
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("Unexpected error updating account %s", account_id)
+    except Exception as e:
+        logger.exception("account_update_failed", account_id=account_id, error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -224,18 +228,18 @@ def delete_account_endpoint(
                 soft_delete_account(conn, account_id)
                 # Remove from cache so webhooks fail for this account
                 remove_account_from_cache(account_id)
-                logger.info("[DELETE /accounts/%s] Account soft deleted", account_id)
+                logger.info("account_soft_deleted", account_id=account_id)
                 return {"message": f"Account {account_id} deactivated (soft delete)"}
             else:
                 # Hard delete - permanently remove
                 hard_delete_account(conn, account_id)
                 # Remove from cache
                 remove_account_from_cache(account_id)
-                logger.info("[DELETE /accounts/%s] Account hard deleted", account_id)
+                logger.info("account_hard_deleted", account_id=account_id)
                 return {"message": f"Account {account_id} permanently deleted"}
 
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("Unexpected error deleting account %s", account_id)
+    except Exception as e:
+        logger.exception("account_deletion_failed", account_id=account_id, error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")

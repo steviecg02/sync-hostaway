@@ -1,12 +1,13 @@
 import json
-import logging
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List
 
+import structlog
+
 from sync_hostaway.config import DEBUG
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

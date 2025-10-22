@@ -1,9 +1,9 @@
 """Hostaway webhook receiver route."""
 
 import base64
-import logging
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
@@ -13,7 +13,7 @@ from sync_hostaway.db.writers.reservations import insert_reservations
 from sync_hostaway.services.account_cache import validate_account
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def validate_basic_auth(auth_header: str | None) -> bool:

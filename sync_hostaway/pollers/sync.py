@@ -1,4 +1,4 @@
-import logging
+import structlog
 
 from sync_hostaway.config import DRY_RUN
 from sync_hostaway.logging_config import setup_logging
@@ -6,7 +6,7 @@ from sync_hostaway.services.sync import sync_all_accounts
 
 # Setup logging
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def main() -> None:

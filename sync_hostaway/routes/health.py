@@ -7,15 +7,14 @@ if the application should be restarted or if it can receive traffic.
 
 from __future__ import annotations
 
-import logging
-
+import structlog
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from sync_hostaway.db.engine import engine
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -64,7 +63,7 @@ def readiness_check() -> JSONResponse:
             conn.execute(text("SELECT 1"))
             checks["database"] = "ok"
     except Exception as e:
-        logger.error("Readiness check failed: database not accessible: %s", str(e))
+        logger.error("readiness_check_failed", reason="database_not_accessible", error=str(e))
         checks["database"] = "failed"
         return JSONResponse(
             status_code=503,

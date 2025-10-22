@@ -3,7 +3,6 @@ Client module for fetching paginated resources from the Hostaway API
 with support for retries, rate limiting, token refresh, and concurrency.
 """
 
-import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from math import ceil
@@ -11,10 +10,11 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import urljoin
 
 import requests
+import structlog
 
 from sync_hostaway.network.auth import get_or_refresh_token
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 BASE_URL = "https://api.hostaway.com/v1/"
 MAX_CONCURRENT_REQUESTS = 4

@@ -1,7 +1,6 @@
 """Account-level sync orchestrator for Hostaway integration."""
 
-import logging
-
+import structlog
 from sqlalchemy import text
 
 from sync_hostaway.db.engine import engine
@@ -15,7 +14,7 @@ from sync_hostaway.pollers.messages import poll_messages
 from sync_hostaway.pollers.reservations import poll_reservations
 from sync_hostaway.services.webhook_registration import register_webhook
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def sync_account(account_id: int, dry_run: bool = False) -> None:
@@ -29,7 +28,7 @@ def sync_account(account_id: int, dry_run: bool = False) -> None:
         account_id (int): Hostaway account ID.
         dry_run (bool): If True, skip DB writes.
     """
-    logger.info("Starting sync for account_id=%s", account_id)
+    logger.info("sync_started", account_id=account_id)
 
     # Listings
     listings = poll_listings(account_id=account_id)
@@ -48,7 +47,7 @@ def sync_account(account_id: int, dry_run: bool = False) -> None:
     if not dry_run:
         with engine.begin() as conn:
             update_last_sync(conn, account_id)
-        logger.info("Updated last_sync_at for account_id=%s", account_id)
+        logger.info("last_sync_updated", account_id=account_id)
 
         # Register webhook with Hostaway after initial sync completes
         # This enables real-time event notifications for new reservations and messages
@@ -58,22 +57,29 @@ def sync_account(account_id: int, dry_run: bool = False) -> None:
                 with engine.begin() as conn:
                     update_webhook_id(conn, account_id, webhook_id)
                 logger.info(
-                    "Webhook registered and saved: account=%s, webhook_id=%s",
-                    account_id,
-                    webhook_id,
+                    "webhook_registered",
+                    account_id=account_id,
+                    webhook_id=webhook_id,
                 )
             else:
                 logger.warning(
-                    "Webhook registration returned no ID for account=%s",
-                    account_id,
+                    "webhook_registration_no_id",
+                    account_id=account_id,
                 )
-        except Exception:
+        except Exception as e:
             logger.exception(
-                "Failed to register webhook for account=%s (non-fatal, continuing)",
-                account_id,
+                "webhook_registration_failed",
+                account_id=account_id,
+                error=str(e),
             )
 
-    logger.info("Finished sync for account_id=%s", account_id)
+    logger.info(
+        "sync_completed",
+        account_id=account_id,
+        listings_count=len(listings),
+        reservations_count=len(reservations),
+        messages_count=len(normalized),
+    )
 
 
 def sync_all_accounts(dry_run: bool = False) -> None:
@@ -85,7 +91,7 @@ def sync_all_accounts(dry_run: bool = False) -> None:
     Args:
         dry_run (bool): If True, do not write to DB.
     """
-    logger.info("Running sync for all accounts")
+    logger.info("sync_all_accounts_started")
 
     with engine.connect() as conn:
         result = conn.execute(
@@ -99,10 +105,12 @@ def sync_all_accounts(dry_run: bool = False) -> None:
         )
         account_ids = list(result.scalars().all())
 
+    logger.info("active_accounts_found", count=len(account_ids))
+
     for account_id in account_ids:
         try:
             sync_account(account_id=account_id, dry_run=dry_run)
-        except Exception:
-            logger.exception("Sync failed for account_id=%s", account_id)
+        except Exception as e:
+            logger.exception("account_sync_failed", account_id=account_id, error=str(e))
 
-    logger.info("Completed sync_all_accounts")
+    logger.info("sync_all_accounts_completed", total_accounts=len(account_ids))

@@ -10,15 +10,15 @@ Strategy:
 - Thread-safe operations using threading.Lock
 """
 
-import logging
 import threading
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.engine import Connection, Engine
 
 from sync_hostaway.models.accounts import Account
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # In-memory cache of active account IDs (thread-safe)
 _active_account_ids: set[int] = set()

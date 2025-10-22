@@ -4,15 +4,15 @@ Hostaway webhook registration service.
 Automatically registers webhooks with Hostaway after account sync completes.
 """
 
-import logging
 from typing import Any
 
 import requests
+import structlog
 
 from sync_hostaway.config import WEBHOOK_BASE_URL
 from sync_hostaway.network.auth import get_or_refresh_token
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Hostaway API base URL
 HOSTAWAY_API_BASE_URL = "https://api.hostaway.com/v1"

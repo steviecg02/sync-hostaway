@@ -1,12 +1,11 @@
-import logging
-
 import requests
+import structlog
 
 from sync_hostaway.db.engine import engine
 from sync_hostaway.db.readers.accounts import get_account_credentials
 from sync_hostaway.db.writers.accounts import update_access_token
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 TOKEN_URL = "https://api.hostaway.com/v1/accessTokens"
 
 

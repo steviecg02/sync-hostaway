@@ -175,7 +175,14 @@ def test_insert_reservations_handles_empty_list(test_account):
 def test_insert_reservations_dry_run_mode(test_account_with_listing):
     """Test that insert_reservations in dry_run mode doesn't write to database."""
     account_id, listing_id = test_account_with_listing
-    data = [{"id": 10001, "listingMapId": listing_id, "guestName": "Dry Run Guest", "status": "pending"}]
+    data = [
+        {
+            "id": 10001,
+            "listingMapId": listing_id,
+            "guestName": "Dry Run Guest",
+            "status": "pending",
+        }
+    ]
 
     insert_reservations(engine, account_id, data, dry_run=True)
 

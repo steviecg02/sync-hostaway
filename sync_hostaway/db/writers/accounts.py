@@ -1,15 +1,15 @@
 import json
-import logging
 from datetime import datetime
 from typing import Any
 
+import structlog
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, Engine
 
 from sync_hostaway.config import DEBUG
 from sync_hostaway.models.accounts import Account
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def insert_accounts(engine: Engine, data: list[dict[str, Any]], dry_run: bool = False) -> None:

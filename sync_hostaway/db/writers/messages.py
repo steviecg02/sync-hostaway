@@ -1,14 +1,14 @@
 import json
-import logging
 from typing import Any
 
+import structlog
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
 from sync_hostaway.config import DEBUG
 from sync_hostaway.models.messages import MessageThread
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def insert_messages(
