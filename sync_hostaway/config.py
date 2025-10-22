@@ -22,3 +22,16 @@ if not ALLOWED_ORIGINS_RAW:
 ALLOWED_ORIGINS: list[str] = [
     origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",")
 ]
+
+# Webhook Authentication (Global credentials for all accounts)
+WEBHOOK_USERNAME = os.getenv("WEBHOOK_USERNAME", "")
+WEBHOOK_PASSWORD = os.getenv("WEBHOOK_PASSWORD", "")
+
+if not WEBHOOK_USERNAME or not WEBHOOK_PASSWORD:
+    raise ValueError("WEBHOOK_USERNAME and WEBHOOK_PASSWORD must be set in the environment")
+
+# Webhook Base URL (e.g., https://your-domain.com)
+WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL", "")
+
+if not WEBHOOK_BASE_URL:
+    raise ValueError("WEBHOOK_BASE_URL must be set in the environment")

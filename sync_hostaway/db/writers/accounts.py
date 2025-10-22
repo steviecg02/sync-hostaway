@@ -36,8 +36,7 @@ def insert_accounts(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
                 "customer_id": acct.get("customer_id"),
                 "client_secret": acct.get("client_secret"),
                 "access_token": acct.get("access_token"),
-                "webhook_login": acct.get("webhook_login"),
-                "webhook_password": acct.get("webhook_password"),
+                "webhook_id": acct.get("webhook_id"),
                 "is_active": acct.get("is_active", True),
                 "created_at": now,
                 "updated_at": now,
@@ -64,8 +63,7 @@ def insert_accounts(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
                 "customer_id": insert(Account).excluded.customer_id,
                 "client_secret": insert(Account).excluded.client_secret,
                 "access_token": insert(Account).excluded.access_token,
-                "webhook_login": insert(Account).excluded.webhook_login,
-                "webhook_password": insert(Account).excluded.webhook_password,
+                "webhook_id": insert(Account).excluded.webhook_id,
                 "is_active": insert(Account).excluded.is_active,
                 "updated_at": insert(Account).excluded.updated_at,
             },
@@ -73,10 +71,7 @@ def insert_accounts(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
                 Account.customer_id.is_distinct_from(insert(Account).excluded.customer_id)
                 | Account.client_secret.is_distinct_from(insert(Account).excluded.client_secret)
                 | Account.access_token.is_distinct_from(insert(Account).excluded.access_token)
-                | Account.webhook_login.is_distinct_from(insert(Account).excluded.webhook_login)
-                | Account.webhook_password.is_distinct_from(
-                    insert(Account).excluded.webhook_password
-                )
+                | Account.webhook_id.is_distinct_from(insert(Account).excluded.webhook_id)
                 | Account.is_active.is_distinct_from(insert(Account).excluded.is_active)
             ),
         )
@@ -178,17 +173,39 @@ def hard_delete_account(conn: Connection, account_id: int) -> None:
 def update_last_sync(conn: Connection, account_id: int) -> None:
     """
     Update the last_sync_at timestamp for an account.
-    
+
     Args:
         conn (Connection): SQLAlchemy DB connection.
         account_id (int): Hostaway account ID.
     """
     from sqlalchemy import update
-    
+
     now = datetime.utcnow()
-    
+
     stmt = update(Account).where(
         Account.account_id == account_id
     ).values(last_sync_at=now, updated_at=now)
-    
+
     conn.execute(stmt)
+
+
+def update_webhook_id(conn: Connection, account_id: int, webhook_id: int) -> None:
+    """
+    Update the webhook_id for an account after webhook registration.
+
+    Args:
+        conn (Connection): SQLAlchemy DB connection.
+        account_id (int): Hostaway account ID.
+        webhook_id (int): Webhook ID from Hostaway API.
+    """
+    from sqlalchemy import update
+
+    now = datetime.utcnow()
+
+    stmt = update(Account).where(
+        Account.account_id == account_id
+    ).values(webhook_id=webhook_id, updated_at=now)
+
+    conn.execute(stmt)
+
+    logger.info("Updated webhook_id=%s for account_id=%s", webhook_id, account_id)

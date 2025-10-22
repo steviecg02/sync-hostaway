@@ -5,7 +5,7 @@ import logging
 from sqlalchemy import text
 
 from sync_hostaway.db.engine import engine
-from sync_hostaway.db.writers.accounts import update_last_sync
+from sync_hostaway.db.writers.accounts import update_last_sync, update_webhook_id
 from sync_hostaway.db.writers.listings import insert_listings
 from sync_hostaway.db.writers.messages import insert_messages
 from sync_hostaway.db.writers.reservations import insert_reservations
@@ -13,6 +13,7 @@ from sync_hostaway.normalizers.messages import normalize_raw_messages
 from sync_hostaway.pollers.listings import poll_listings
 from sync_hostaway.pollers.messages import poll_messages
 from sync_hostaway.pollers.reservations import poll_reservations
+from sync_hostaway.services.webhook_registration import register_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,29 @@ def sync_account(account_id: int, dry_run: bool = False) -> None:
         with engine.begin() as conn:
             update_last_sync(conn, account_id)
         logger.info("Updated last_sync_at for account_id=%s", account_id)
+
+        # Register webhook with Hostaway after initial sync completes
+        # This enables real-time event notifications for new reservations and messages
+        try:
+            webhook_id = register_webhook(account_id)
+            if webhook_id:
+                with engine.begin() as conn:
+                    update_webhook_id(conn, account_id, webhook_id)
+                logger.info(
+                    "Webhook registered and saved: account=%s, webhook_id=%s",
+                    account_id,
+                    webhook_id,
+                )
+            else:
+                logger.warning(
+                    "Webhook registration returned no ID for account=%s",
+                    account_id,
+                )
+        except Exception:
+            logger.exception(
+                "Failed to register webhook for account=%s (non-fatal, continuing)",
+                account_id,
+            )
 
     logger.info("Finished sync for account_id=%s", account_id)
 

@@ -13,6 +13,7 @@ from sync_hostaway.db.writers.accounts import (
     update_account,
 )
 from sync_hostaway.schemas.accounts import AccountCreatePayload, AccountUpdatePayload
+from sync_hostaway.services.account_cache import remove_account_from_cache
 from sync_hostaway.services.sync import sync_account
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,7 @@ def create_account(
                     "client_secret": payload.client_secret,
                     "customer_id": payload.customer_id,
                     "access_token": None,
-                    "webhook_login": None,
-                    "webhook_password": None,
+                    "webhook_id": None,
                 }
             ],
         )
@@ -223,11 +223,15 @@ def delete_account_endpoint(
             if soft:
                 # Soft delete - set is_active to false
                 soft_delete_account(conn, account_id)
+                # Remove from cache so webhooks fail for this account
+                remove_account_from_cache(account_id)
                 logger.info("[DELETE /accounts/%s] Account soft deleted", account_id)
                 return {"message": f"Account {account_id} deactivated (soft delete)"}
             else:
                 # Hard delete - permanently remove
                 hard_delete_account(conn, account_id)
+                # Remove from cache
+                remove_account_from_cache(account_id)
                 logger.info("[DELETE /accounts/%s] Account hard deleted", account_id)
                 return {"message": f"Account {account_id} permanently deleted"}
     

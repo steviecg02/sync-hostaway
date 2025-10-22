@@ -33,4 +33,16 @@ app.add_middleware(
 app.include_router(accounts_router, prefix="/hostaway", tags=["Accounts"])
 app.include_router(webhook_router, prefix="/hostaway", tags=["Webhooks"])
 
-logger.info("FastAPI application initialized")
+
+@app.on_event("startup")
+def startup_event() -> None:
+    """Initialize application on startup."""
+    from sync_hostaway.db.engine import engine
+    from sync_hostaway.services.account_cache import refresh_account_cache
+
+    logger.info("FastAPI application starting up...")
+
+    # Load all active accounts into memory cache
+    refresh_account_cache(engine)
+
+    logger.info("FastAPI application initialized")
