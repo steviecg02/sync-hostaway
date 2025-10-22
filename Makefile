@@ -4,7 +4,7 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make install         Install prod dependencies"
-	@echo "  make install-dev     Install dev + prod dependencies"
+	@echo "  make install-dev     Install dev + prod dependencies + pre-commit hooks"
 	@echo "  make venv            Create and initialize a clean virtualenv"
 	@echo "  make build           Build Docker image"
 	@echo "  make shell           Run interactive container with mounted code"
@@ -21,6 +21,11 @@ install:
 
 install-dev:
 	pip install -r requirements.txt -r dev-requirements.txt
+	pre-commit install
+	@echo ""
+	@echo "✅ Pre-commit hooks installed successfully!"
+	@echo "   Hooks will now run automatically on git commit"
+	@echo ""
 
 venv:
 	python3 -m venv venv && source venv/bin/activate && make install-dev

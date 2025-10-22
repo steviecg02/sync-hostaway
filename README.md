@@ -50,7 +50,9 @@ cd sync-hostaway
 # Create virtual environment and install dependencies
 make venv
 source venv/bin/activate
-make install-dev
+
+# Note: Pre-commit hooks are automatically installed with make install-dev
+# They will run on every git commit to enforce code quality
 ```
 
 **2. Create `.env` file:**
@@ -145,15 +147,29 @@ make test  # Generates htmlcov/index.html
 
 ## Code Quality
 
+Pre-commit hooks are automatically installed with `make install-dev` and will run on every commit to enforce:
+- Code formatting (black)
+- Linting (ruff)
+- Type checking (mypy)
+- File formatting (trailing whitespace, end of files)
+
+**Manual quality checks:**
+
 ```bash
 # Format code
 make format
 
-# Run linters
+# Run all linters and checks
 make lint
 
-# Type check
+# Type check only
 mypy sync_hostaway/
+```
+
+**Bypass hooks (use sparingly):**
+```bash
+# Skip pre-commit hooks for a specific commit
+git commit --no-verify -m "message"
 ```
 
 ## Database Migrations
