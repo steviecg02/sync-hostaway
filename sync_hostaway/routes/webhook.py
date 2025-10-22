@@ -52,11 +52,21 @@ def handle_reservation_created(account_id: int, payload: dict[str, Any]) -> None
     """
     reservation_data = payload.get("data", {})
     if not reservation_data:
-        logger.warning("reservation.created webhook missing data field")
+        logger.warning(
+            "reservation_created_missing_data",
+            account_id=account_id,
+            payload=payload,
+        )
         return
 
     insert_reservations(engine, account_id, [reservation_data])
-    logger.info("Inserted reservation from webhook: account=%s", account_id)
+    logger.info(
+        "reservation_created_processed",
+        account_id=account_id,
+        reservation_id=reservation_data.get("id"),
+        listing_id=reservation_data.get("listingMapId"),
+        guest_name=reservation_data.get("guestName"),
+    )
 
 
 def handle_reservation_updated(account_id: int, payload: dict[str, Any]) -> None:
@@ -69,11 +79,22 @@ def handle_reservation_updated(account_id: int, payload: dict[str, Any]) -> None
     """
     reservation_data = payload.get("data", {})
     if not reservation_data:
-        logger.warning("reservation.updated webhook missing data field")
+        logger.warning(
+            "reservation_updated_missing_data",
+            account_id=account_id,
+            payload=payload,
+        )
         return
 
     insert_reservations(engine, account_id, [reservation_data])
-    logger.info("Updated reservation from webhook: account=%s", account_id)
+    logger.info(
+        "reservation_updated_processed",
+        account_id=account_id,
+        reservation_id=reservation_data.get("id"),
+        listing_id=reservation_data.get("listingMapId"),
+        guest_name=reservation_data.get("guestName"),
+        status=reservation_data.get("status"),
+    )
 
 
 def handle_message_received(account_id: int, payload: dict[str, Any]) -> None:
@@ -81,15 +102,27 @@ def handle_message_received(account_id: int, payload: dict[str, Any]) -> None:
     Handle message.received webhook event.
 
     TODO: Implement full conversation fetching logic.
-    For now, this is a stub - we need to see actual webhook payloads
-    to determine the correct API endpoint and data structure.
+    For now, this is a stub that logs the full payload structure
+    so we can understand what Hostaway sends and implement proper handling.
 
     Args:
         account_id: Hostaway account ID
         payload: Webhook payload containing message data
     """
-    logger.info("message.received webhook received (stubbed): account=%s", account_id)
+    logger.info(
+        "message_webhook_received_STUB",
+        account_id=account_id,
+        payload_structure=payload,
+        data_field=payload.get("data"),
+        message="This is a STUB - logging payload structure for future implementation",
+    )
     # TODO: Extract conversationId, fetch full conversation, normalize, insert
+    # Example expected logic (once we see real payloads):
+    # conversation_id = payload.get("data", {}).get("conversationId")
+    # if conversation_id:
+    #     conversation = fetch_conversation(account_id, conversation_id)
+    #     normalized = normalize_raw_messages([conversation])
+    #     insert_messages(engine, account_id, normalized)
 
 
 @router.post("/webhooks")
@@ -129,10 +162,26 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
             content={"error": "Invalid JSON"},
         )
 
+    # LOG RAW WEBHOOK PAYLOAD - VERBOSE for analysis
+    # This logs EVERYTHING so you can see exactly what Hostaway sends
+    logger.info(
+        "webhook_received_raw",
+        raw_payload=payload,
+        payload_keys=list(payload.keys()),
+        event_type=payload.get("eventType"),
+        account_id=payload.get("accountId"),
+        data_field=payload.get("data"),
+        has_data=bool(payload.get("data")),
+        data_keys=list(payload.get("data", {}).keys()) if payload.get("data") else [],
+        full_headers={k: v for k, v in request.headers.items()},
+        content_type=request.headers.get("content-type"),
+        user_agent=request.headers.get("user-agent"),
+    )
+
     # Validate eventType
     event_type: str | None = payload.get("eventType")
     if not event_type:
-        logger.warning("Webhook missing eventType: %s", payload)
+        logger.warning("webhook_missing_event_type", payload=payload)
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Missing eventType"},
@@ -168,22 +217,30 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
         try:
             handler(account_id, payload)
             logger.info(
-                "Webhook processed successfully: eventType=%s, account=%s",
-                event_type,
-                account_id,
+                "webhook_processed_success",
+                event_type=event_type,
+                account_id=account_id,
+                data_keys=list(payload.get("data", {}).keys()) if payload.get("data") else [],
             )
-        except Exception:
+        except Exception as e:
             logger.exception(
-                "Failed to process webhook: eventType=%s, account=%s",
-                event_type,
-                account_id,
+                "webhook_processing_failed",
+                event_type=event_type,
+                account_id=account_id,
+                error=str(e),
+                payload=payload,
             )
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"error": "Internal server error"},
             )
     else:
-        logger.warning("Unsupported event type: %s", event_type)
+        logger.warning(
+            "webhook_unsupported_event_type",
+            event_type=event_type,
+            account_id=account_id,
+            payload=payload,
+        )
         # Return 200 anyway - don't fail on unknown events
 
     return JSONResponse(content={"status": "accepted"})
