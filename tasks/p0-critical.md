@@ -2,191 +2,32 @@
 
 **Priority:** Highest - These issues block development or cause runtime errors
 
-**Estimated Total Effort:** 9-11 hours
+**Last Updated:** 2025-10-21
 
 ---
 
-## 1. Fix Test Environment (BLOCKER)
+## ✅ Recently Completed (2025-10-21)
 
-**Status:** 🚨 Critical - Cannot run any tests
-**Effort:** 15 minutes
-**Impact:** Unblocks entire test suite
+1. **Fix Test Environment** - Tests now run (PYTHONPATH configured, dependencies installed)
+2. **Fix SyncMode.INCREMENTAL** - Removed SyncMode entirely (differential sync not beneficial)
+3. **Fix ALLOWED_ORIGINS Type Issues** - Proper type annotations in config.py and main.py
 
-### Problem
-All 14 test files fail with:
-```
-ModuleNotFoundError: No module named 'sync_hostaway'
-```
-
-### Root Cause
-Package not installed, PYTHONPATH not set in test environment
-
-### Solution Options
-
-**Option 1: Update Makefile (Recommended)**
-```makefile
-# In Makefile
-test:
-	PYTHONPATH=. pytest -v --tb=short --cov=sync_hostaway --cov-report=html
-```
-
-**Option 2: Add setup.py**
-```python
-# setup.py
-from setuptools import setup, find_packages
-
-setup(
-    name="sync-hostaway",
-    version="1.0.0",
-    packages=find_packages(),
-    install_requires=[
-        # Copy from requirements.txt
-    ],
-)
-```
-
-Then: `pip install -e .`
-
-### Verification
-```bash
-make test
-# Should collect and run 14 test files
-```
-
-### Files to Modify
-- `Makefile` (Option 1)
-- OR create `setup.py` (Option 2)
-
-### References
-- Implementation Status: Line 1040-1067
-- Contributing.md: Testing section
+**Mypy improvements:** 9 errors → 6 errors (3 P0 blockers fixed)
 
 ---
 
-## 2. Fix SyncMode.INCREMENTAL Reference Error
+## 1. Complete Webhook Implementation
 
-**Status:** 🚨 Runtime Error
-**Effort:** 5 minutes
-**Impact:** Prevents incremental sync mode usage
-
-### Problem
-`routes/accounts.py:111` references undefined `SyncMode.INCREMENTAL`:
-```python
-mode = SyncMode.FULL if mode.lower() == "full" else SyncMode.INCREMENTAL  # ❌
-```
-
-But `services/sync.py` only defines:
-```python
-class SyncMode(str, Enum):
-    FULL = "full"
-    DIFFERENTIAL = "differential"  # Not INCREMENTAL!
-```
-
-### Solution Option 1: Add INCREMENTAL (Recommended)
-```python
-# In sync_hostaway/services/sync.py
-class SyncMode(str, Enum):
-    FULL = "full"
-    DIFFERENTIAL = "differential"
-    INCREMENTAL = "incremental"  # Add this
-```
-
-### Solution Option 2: Use DIFFERENTIAL
-```python
-# In sync_hostaway/routes/accounts.py:111
-mode = SyncMode.FULL if mode.lower() == "full" else SyncMode.DIFFERENTIAL
-```
-
-### Verification
-```bash
-mypy sync_hostaway/routes/accounts.py
-# Should pass without SyncMode.INCREMENTAL error
-```
-
-### Files to Modify
-- `sync_hostaway/services/sync.py` (Option 1)
-- OR `sync_hostaway/routes/accounts.py` (Option 2)
-
-### References
-- Implementation Status: Line 576-600
-- Mypy error output: Line 111
-
----
-
-## 3. Fix ALLOWED_ORIGINS Type Issues
-
-**Status:** 🚨 Type Safety Violation
-**Effort:** 15 minutes
-**Impact:** Type checking failures in config and main
-
-### Problem 1: config.py Type Mismatch
-```python
-# Current (WRONG)
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS")  # Type: str | None
-if ALLOWED_ORIGINS:
-    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS.split(",")]  # ❌ Assign list to str | None
-```
-
-### Problem 2: main.py Comparison Error
-```python
-# Current (WRONG)
-allow_origins=["*"] if ALLOWED_ORIGINS == ["*"] else ALLOWED_ORIGINS
-# Compares str | None with list[str]
-```
-
-### Solution
-
-**In `sync_hostaway/config.py`:**
-```python
-# Replace lines 18-22 with:
-ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS")
-if not ALLOWED_ORIGINS_RAW:
-    raise ValueError("ALLOWED_ORIGINS must be set in the environment")
-
-ALLOWED_ORIGINS: list[str] = [
-    origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",")
-]
-```
-
-**In `sync_hostaway/main.py`:**
-```python
-# Replace line 26 with:
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS if "*" not in ALLOWED_ORIGINS else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
-### Verification
-```bash
-mypy sync_hostaway/config.py sync_hostaway/main.py
-# Should pass with no errors
-```
-
-### Files to Modify
-- `sync_hostaway/config.py` (lines 18-22)
-- `sync_hostaway/main.py` (line 26)
-
-### References
-- Implementation Status: Line 602-641
-- Mypy errors: config.py:20, main.py:26
-
----
-
-## 4. Complete Webhook Implementation
-
-**Status:** 🚨 25% Complete - Real-time sync non-functional
-**Effort:** 6-8 hours
+**Status:** 🚨 10% Complete - Real-time sync non-functional
+**Effort:** TBD (needs research first)
 **Impact:** Enables real-time webhook-driven sync
 
 ### Current State
-Basic endpoint exists but no event handling:
+
+Basic endpoint exists but minimal functionality:
 ```python
 # sync_hostaway/routes/webhook.py (current)
-@router.post("/hostaway")
+@router.post("/hostaway")  # Should rename to just "/webhooks"
 async def receive_hostaway_webhook(request: Request) -> JSONResponse:
     payload = await request.json()
     event_type = payload.get("eventType")
@@ -195,124 +36,89 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
     return JSONResponse(content={"status": "accepted"})
 ```
 
-### Requirements
+### What We Need to Research First
 
-#### 4.1 Add Basic Auth Validation
-```python
-from fastapi import Depends, HTTPException, Header
-from typing import Annotated
+Before implementing, we need to understand:
 
-def validate_webhook_auth(
-    authorization: Annotated[str | None, Header()] = None
-) -> bool:
-    """Validate HTTP Basic Auth against accounts table."""
-    if not authorization or not authorization.startswith("Basic "):
-        raise HTTPException(401, "Unauthorized")
+1. **Hostaway Webhook Authentication**
+   - What authentication methods does Hostaway support?
+   - HTTP Basic Auth? Certificate-based? Signature validation?
+   - Multiple methods per customer?
+   - Where to find official documentation?
 
-    # Decode Basic Auth
-    # Query accounts table for matching webhook_login/webhook_password
-    # Return True if valid
-```
+2. **Webhook Payload Structure**
+   - What does the actual JSON payload look like?
+   - What fields are consistent across all event types?
+   - What's the full list of event types?
 
-#### 4.2 Implement Event Router
-```python
-def route_event(event_type: str, payload: dict[str, Any]) -> None:
-    """Route webhook events to appropriate handlers."""
-    handlers = {
-        "listing.created": handle_listing_created,
-        "listing.updated": handle_listing_updated,
-        "listing.deleted": handle_listing_deleted,
-        "reservation.created": handle_reservation_created,
-        "reservation.updated": handle_reservation_updated,
-        "reservation.cancelled": handle_reservation_cancelled,
-        "message.created": handle_message_created,
-    }
+3. **Webhook Registration**
+   - Manual configuration in Hostaway dashboard?
+   - OR programmatic via Hostaway API (`POST /v1/webhooks`)?
+   - When should registration happen?
 
-    handler = handlers.get(event_type)
-    if handler:
-        handler(payload)
-    else:
-        logger.warning("Unknown event type: %s", event_type)
-```
+4. **Webhook Lifecycle Management**
+   - How does Hostaway handle failed deliveries?
+   - Do webhooks get auto-disabled after N failures?
+   - Do we need health monitoring?
 
-#### 4.3 Implement Event Handlers
-```python
-def handle_listing_created(payload: dict[str, Any]) -> None:
-    """Handle listing.created webhook event."""
-    account_id = payload.get("accountId")
-    listing_data = payload.get("data", {})
+### Proposed Simple Approach
 
-    insert_listings(
-        engine=engine,
-        account_id=account_id,
-        data=[listing_data],
-        dry_run=False,
-    )
+**Phase 1: Raw Storage (Simplest)**
+- Just save the entire webhook payload to a `webhooks` table (raw JSON)
+- Validate authentication (whatever Hostaway uses)
+- Return 200 OK quickly
+- Don't process events yet - figure out schema later
 
-# Repeat for other event types...
-```
+**Phase 2: Processing (Later)**
+- Parse event types
+- Route to appropriate handlers
+- Write to listings/reservations/messages tables
 
-#### 4.4 Add Deduplication
-- Track processed webhook IDs in database
-- Skip if already processed
-- Prevent duplicate writes
+### Prerequisites
 
-#### 4.5 Write Tests
-```python
-# tests/unit/api/test_webhook.py
-@pytest.mark.unit
-def test_webhook_authenticates_basic_auth():
-    """Test webhook validates Basic Auth credentials."""
-    ...
+Before starting implementation:
 
-@pytest.mark.unit
-def test_webhook_routes_listing_created():
-    """Test webhook routes listing.created to correct handler."""
-    ...
-```
+1. **✅ Test current codebase** - Verify account creation + sync works after recent changes
+2. **✅ Document sync performance** - Time how long full sync takes for baseline
+3. **✅ Fix broken tests** - Get test suite passing and coverage up
+4. **📚 Research Hostaway webhook docs** - Understand authentication, payloads, lifecycle
 
-### Files to Create/Modify
-- `sync_hostaway/routes/webhook.py` (major rewrite)
-- `sync_hostaway/db/writers/webhooks.py` (new - for deduplication)
-- `tests/unit/api/test_webhook.py` (expand)
-- `tests/integration/api/test_webhook_e2e.py` (new)
+### Next Actions
 
-### Verification
-```bash
-# Unit tests
-pytest tests/unit/api/test_webhook.py -v
-
-# Integration test with mock payload
-curl -X POST http://localhost:8000/hostaway/webhooks/hostaway \
-  -H "Authorization: Basic <encoded>" \
-  -H "Content-Type: application/json" \
-  -d '{"eventType": "listing.created", "accountId": 12345, "data": {...}}'
-```
-
-### References
-- Implementation Status: Line 410-442
-- Technical Requirements: Line 1472-1553
+1. Manually test account creation + sync flow
+2. Document sync timing/performance
+3. Fix test suite
+4. Research Hostaway webhook documentation
+5. Create detailed implementation plan with actual requirements
 
 ---
 
 ## Summary
 
-| Task | Effort | Status | Blocker? |
-|------|--------|--------|----------|
-| Fix test environment | 15 min | 🚨 | YES - blocks all testing |
-| Fix SyncMode.INCREMENTAL | 5 min | 🚨 | YES - runtime error |
-| Fix ALLOWED_ORIGINS types | 15 min | 🚨 | YES - type safety |
-| Complete webhooks | 6-8 hrs | 🚨 | YES - real-time sync |
-
-**Total P0 Effort:** 9-11 hours
+| Task | Status | Next Step |
+|------|--------|-----------|
+| Test recent code changes | ⏳ Pending | Create account, run sync, verify works |
+| Document sync performance | ⏳ Pending | Time sync duration, document for future |
+| Fix test suite | ⏳ Pending | Update tests for SyncMode removal, get passing |
+| Research webhooks | ⏳ Pending | Fetch Hostaway webhook docs, understand requirements |
+| Implement webhooks | 🔜 Future | After research + testing complete |
 
 ---
 
-## Next Steps
+## Current Focus
 
-1. **Immediately:** Fix test environment (15 min)
-2. **Immediately:** Fix SyncMode.INCREMENTAL (5 min)
-3. **Immediately:** Fix ALLOWED_ORIGINS (15 min)
-4. **This Week:** Complete webhook implementation (6-8 hrs)
+**Don't start webhook implementation yet.**
 
-After P0 complete: Run full test suite and measure coverage → Move to P1 tasks
+Instead:
+1. Test that account creation + sync still works after code changes
+2. Fix broken tests
+3. Research webhook requirements properly
+4. Then plan webhook implementation with actual facts
+
+---
+
+## References
+
+- Implementation Status: `docs/implementation-status.md`
+- Differential Sync Research: `tasks/missing-features.md` (lines 85-153)
+- Technical Requirements: `docs/technical-requirements.md` (line 1472-1553)

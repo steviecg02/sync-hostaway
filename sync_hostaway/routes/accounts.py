@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 
@@ -13,7 +13,7 @@ from sync_hostaway.db.writers.accounts import (
     update_account,
 )
 from sync_hostaway.schemas.accounts import AccountCreatePayload, AccountUpdatePayload
-from sync_hostaway.services.sync import SyncMode, sync_account
+from sync_hostaway.services.sync import sync_account
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,7 +23,7 @@ router = APIRouter()
 def create_account(
     payload: AccountCreatePayload,
     background_tasks: BackgroundTasks,
-) -> dict:
+) -> dict[str, str]:
     """
     Create or upsert a Hostaway account if it does not exist.
 
@@ -67,7 +67,6 @@ def create_account(
         background_tasks.add_task(
             sync_account,
             account_id=payload.account_id,
-            mode=SyncMode.FULL,
             dry_run=DRY_RUN,
         )
 
@@ -85,18 +84,19 @@ def create_account(
 def trigger_sync(
     account_id: int,
     background_tasks: BackgroundTasks,
-    mode: str = Query("full", description="Sync mode: 'full' or 'incremental'"),
     dry_run: Optional[bool] = Query(None, description="Override DRY_RUN setting"),
-) -> dict:
+) -> dict[str, str]:
     """
-    Manually trigger a sync for an existing account.
-    
+    Manually trigger a full sync for an existing account.
+
+    Performs a complete sync of all listings, reservations, and messages for
+    the specified account. The sync runs in the background.
+
     Args:
         account_id: Hostaway account ID to sync
         background_tasks: FastAPI background task runner
-        mode: Sync mode - "full" or "incremental" (default: "full")
         dry_run: Override DRY_RUN setting (optional)
-    
+
     Returns:
         dict: Message confirming sync has been scheduled
     """
@@ -107,24 +107,22 @@ def trigger_sync(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Account {account_id} not found",
                 )
-        
-        sync_mode = SyncMode.FULL if mode.lower() == "full" else SyncMode.INCREMENTAL
+
         use_dry_run = DRY_RUN if dry_run is None else dry_run
-        
+
         background_tasks.add_task(
             sync_account,
             account_id=account_id,
-            mode=sync_mode,
             dry_run=use_dry_run,
         )
-        
+
         logger.info(
-            "[POST /accounts/%s/sync] Sync triggered (mode=%s, dry_run=%s)",
-            account_id, sync_mode, use_dry_run
+            "[POST /accounts/%s/sync] Sync triggered (dry_run=%s)",
+            account_id, use_dry_run
         )
-        
-        return {"message": f"Sync scheduled for account {account_id} (mode={sync_mode.value}, dry_run={use_dry_run})"}
-    
+
+        return {"message": f"Sync scheduled for account {account_id} (dry_run={use_dry_run})"}
+
     except HTTPException:
         raise
     except Exception:
@@ -137,7 +135,7 @@ def update_account_endpoint(
     account_id: int,
     payload: AccountUpdatePayload,
     background_tasks: BackgroundTasks,
-) -> dict:
+) -> dict[str, str]:
     """
     Update an existing account. Triggers sync if client_secret changed and never synced before.
     
@@ -161,7 +159,7 @@ def update_account_endpoint(
                 )
             
             # Build update dict with only non-None values
-            update_data = {k: v for k, v in payload.dict().items() if v is not None}
+            update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
             
             if not update_data:
                 return {"message": "No fields to update"}
@@ -180,7 +178,6 @@ def update_account_endpoint(
                 background_tasks.add_task(
                     sync_account,
                     account_id=account_id,
-                    mode=SyncMode.FULL,
                     dry_run=DRY_RUN,
                 )
                 logger.info(
@@ -203,7 +200,7 @@ def update_account_endpoint(
 def delete_account_endpoint(
     account_id: int,
     soft: bool = Query(True, description="Soft delete (set is_active=false) vs hard delete"),
-) -> dict:
+) -> dict[str, str]:
     """
     Delete an account (soft delete by default).
     

@@ -1,7 +1,6 @@
 """Account-level sync orchestrator for Hostaway integration."""
 
 import logging
-from enum import Enum
 
 from sqlalchemy import text
 
@@ -18,23 +17,18 @@ from sync_hostaway.pollers.reservations import poll_reservations
 logger = logging.getLogger(__name__)
 
 
-class SyncMode(str, Enum):
-    """Available sync modes for Hostaway data ingestion."""
-
-    FULL = "full"
-    DIFFERENTIAL = "differential"
-
-
-def sync_account(account_id: int, mode: SyncMode, dry_run: bool = False) -> None:
+def sync_account(account_id: int, dry_run: bool = False) -> None:
     """
     Sync all data for a single Hostaway account.
 
+    Performs a full sync of listings, reservations, and messages from the
+    Hostaway API and upserts them into the database.
+
     Args:
         account_id (int): Hostaway account ID.
-        mode (SyncMode): Whether to do full or diff sync.
         dry_run (bool): If True, skip DB writes.
     """
-    logger.info("Starting %s sync for account_id=%s", mode, account_id)
+    logger.info("Starting sync for account_id=%s", account_id)
 
     # Listings
     listings = poll_listings(account_id=account_id)
@@ -55,18 +49,19 @@ def sync_account(account_id: int, mode: SyncMode, dry_run: bool = False) -> None
             update_last_sync(conn, account_id)
         logger.info("Updated last_sync_at for account_id=%s", account_id)
 
-    logger.info("Finished %s sync for account_id=%s", mode, account_id)
+    logger.info("Finished sync for account_id=%s", account_id)
 
 
-def sync_all_accounts(mode: SyncMode, dry_run: bool = False) -> None:
+def sync_all_accounts(dry_run: bool = False) -> None:
     """
     Run sync_account() for all active Hostaway accounts.
 
+    Performs a full sync for each active account in the database.
+
     Args:
-        mode (SyncMode): Sync mode (FULL or DIFFERENTIAL).
         dry_run (bool): If True, do not write to DB.
     """
-    logger.info("Running %s sync for all accounts", mode)
+    logger.info("Running sync for all accounts")
 
     with engine.connect() as conn:
         result = conn.execute(
@@ -82,8 +77,8 @@ def sync_all_accounts(mode: SyncMode, dry_run: bool = False) -> None:
 
     for account_id in account_ids:
         try:
-            sync_account(account_id=account_id, mode=mode, dry_run=dry_run)
+            sync_account(account_id=account_id, dry_run=dry_run)
         except Exception:
             logger.exception("Sync failed for account_id=%s", account_id)
 
-    logger.info("Completed sync_all_accounts with mode=%s", mode)
+    logger.info("Completed sync_all_accounts")

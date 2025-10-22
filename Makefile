@@ -45,7 +45,7 @@ test-container:
 		make test
 
 test:
-	PYTHONPATH=. pytest -v --tb=short
+	PYTHONPATH=. pytest -v --tb=short --cov=sync_hostaway --cov-report=html --cov-report=term
 
 lint:
 	pre-commit run --all-files

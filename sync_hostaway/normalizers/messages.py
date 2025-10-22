@@ -64,7 +64,8 @@ def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str,
     now = datetime.utcnow().isoformat()
 
     for (reservation_id), messages in threads.items():
-        sorted_messages = sorted(messages, key=lambda m: m["sent_at"])
+        # Sort by sent_at timestamp (guaranteed to be str from message_obj construction)
+        sorted_messages = sorted(messages, key=lambda m: str(m["sent_at"]))
         normalized_threads.append(
             {
                 "reservation_id": reservation_id,

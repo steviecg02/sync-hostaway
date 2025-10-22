@@ -37,50 +37,136 @@ sync-hostaway/
 └── README.md
 ```
 
-## Usage
+## Quick Start
 
-### Environment Setup
+### Local Development Setup
 
-Create a `.env` file:
-
-```
-DRY_RUN=False
-LOG_LEVEL=INFO
-DATABASE_URL=
-HOSTAWAY_ACCESS_TOKEN=
-```
-
-Install dependencies:
+**1. Clone and install dependencies:**
 
 ```bash
+git clone <repo-url>
+cd sync-hostaway
+
+# Create virtual environment and install dependencies
 make venv
 source venv/bin/activate
+make install-dev
 ```
 
-Or run individual pollers:
+**2. Create `.env` file:**
 
 ```bash
-python -m sync_hostaway.pollers.sync
+# Database (connects to Docker Postgres)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
+
+# API Configuration
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+
+# Logging
+LOG_LEVEL=INFO
+
+# Development
+DRY_RUN=false
 ```
 
-## Docker Support
+**3. Start PostgreSQL in Docker:**
 
 ```bash
-make build
-make shell
+docker-compose up -d postgres
 ```
+
+**4. Run database migrations:**
+
+```bash
+alembic upgrade head
+```
+
+**5. Run the API locally:**
+
+```bash
+uvicorn sync_hostaway.main:app --reload
+```
+
+The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive API documentation.
+
+---
+
+## Development Workflow
+
+### Running Locally (Recommended for Development)
+
+**Database in Docker, API running locally:**
+
+```bash
+# Terminal 1: Start database
+docker-compose up postgres
+
+# Terminal 2: Run API with hot reload
+source venv/bin/activate
+uvicorn sync_hostaway.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Benefits:**
+- Fast reload on code changes
+- Easy debugging with breakpoints
+- Direct access to logs
+
+### Running Everything in Docker
+
+**Full stack (database + API) in Docker:**
+
+```bash
+# Start everything
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop everything
+docker-compose down
+```
+
+**Note:** Migrations run automatically via `entrypoint.sh` when the app container starts.
+
+---
 
 ## Testing
 
 ```bash
+# Run all tests
 make test
+
+# Run specific test file
+pytest tests/unit/test_client.py -v
+
+# Run with coverage
+make test  # Generates htmlcov/index.html
 ```
 
-## Alembic Migrations
+## Code Quality
 
 ```bash
+# Format code
+make format
+
+# Run linters
+make lint
+
+# Type check
+mypy sync_hostaway/
+```
+
+## Database Migrations
+
+```bash
+# Create a new migration
 alembic revision --autogenerate -m "Add new field"
+
+# Apply migrations
 alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
 ```
 
 ---

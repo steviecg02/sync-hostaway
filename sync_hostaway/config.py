@@ -15,8 +15,10 @@ if not DATABASE_URL:
 
 SCHEMA = "hostaway"
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS")
-if ALLOWED_ORIGINS:
-    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS.split(",")]
-else:
+ALLOWED_ORIGINS_RAW = os.getenv("ALLOWED_ORIGINS")
+if not ALLOWED_ORIGINS_RAW:
     raise ValueError("ALLOWED_ORIGINS must be set in the environment")
+
+ALLOWED_ORIGINS: list[str] = [
+    origin.strip() for origin in ALLOWED_ORIGINS_RAW.split(",")
+]

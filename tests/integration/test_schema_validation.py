@@ -18,7 +18,8 @@ ENDPOINTS = ["listings", "reservations", "conversations"]
 @pytest.fixture(scope="module")
 def token() -> str:
     """Fixture to retrieve Hostaway API token once per test module."""
-    return get_access_token()
+    # Use test account ID - this should match a real account in your .env
+    return get_access_token(account_id=59808)
 
 
 # === Sanity Check: General Structure ===
@@ -29,8 +30,9 @@ def test_hostaway_endpoint_returns_expected_structure(endpoint: str, token: str)
     """
     Hits the first page of each core endpoint and validates standard structure.
     """
-    page_data = fetch_page(endpoint, token=token, page_number=0)
+    page_data, status_code = fetch_page(endpoint, token=token, page_number=0)
 
+    assert status_code == 200
     assert isinstance(page_data, dict)
     assert "result" in page_data
     assert "count" in page_data
@@ -48,7 +50,8 @@ def test_listings_structure(token: str) -> None:
     """
     Validates that each listing includes the expected keys.
     """
-    listings = fetch_page("listings", token=token)["result"]
+    page_data, _ = fetch_page("listings", token=token)
+    listings = page_data["result"]
     assert listings, "No listings returned."
     for obj in listings:
         missing = REQUIRED_LISTING_KEYS - obj.keys()
@@ -59,7 +62,8 @@ def test_reservations_structure(token: str) -> None:
     """
     Validates that each reservation includes the expected keys.
     """
-    reservations = fetch_page("reservations", token=token)["result"]
+    page_data, _ = fetch_page("reservations", token=token)
+    reservations = page_data["result"]
     assert reservations, "No reservations returned."
     for obj in reservations:
         missing = REQUIRED_RESERVATION_KEYS - obj.keys()
@@ -70,7 +74,8 @@ def test_conversations_structure(token: str) -> None:
     """
     Validates that each conversation includes the expected keys.
     """
-    conversations = fetch_page("conversations", token=token)["result"]
+    page_data, _ = fetch_page("conversations", token=token)
+    conversations = page_data["result"]
     assert conversations, "No conversations returned."
     for obj in conversations:
         missing = REQUIRED_CONVERSATION_KEYS - obj.keys()
@@ -81,12 +86,14 @@ def test_conversation_messages_structure(token: str) -> None:
     """
     Fetches first conversation, then validates first page of messages.
     """
-    conversations = fetch_page("conversations", token=token)["result"]
+    page_data, _ = fetch_page("conversations", token=token)
+    conversations = page_data["result"]
     assert conversations, "No conversations found to sample."
 
     convo_id = conversations[0]["id"]
     endpoint = f"conversations/{convo_id}/messages"
-    messages = fetch_page(endpoint, token=token)["result"]
+    messages_data, _ = fetch_page(endpoint, token=token)
+    messages = messages_data["result"]
 
     assert messages, f"No messages returned for convo {convo_id}"
     for obj in messages:

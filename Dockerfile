@@ -27,6 +27,11 @@
     COPY --from=builder /install /usr/local
     COPY . .
 
+    # Copy and set up entrypoint script
+    COPY entrypoint.sh /entrypoint.sh
+    RUN chmod +x /entrypoint.sh
+
     ENV PYTHONUNBUFFERED=1
 
-    CMD ["python", "-m", "sync_hostaway.main"]
+    ENTRYPOINT ["/entrypoint.sh"]
+    CMD ["uvicorn", "sync_hostaway.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -5,6 +5,7 @@ def test_normalize_raw_messages_single_thread() -> None:
     raw_input = [
         {
             "reservationId": 45054652,
+            "accountId": 12345,
             "listingMapId": "abc-123",
             "conversationId": 999,
             "isIncoming": 1,
@@ -13,6 +14,7 @@ def test_normalize_raw_messages_single_thread() -> None:
         },
         {
             "reservationId": 45054652,
+            "accountId": 12345,
             "listingMapId": "abc-123",
             "conversationId": 999,
             "isIncoming": 0,
