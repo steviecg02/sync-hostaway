@@ -5,12 +5,18 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 
 from sync_hostaway.config import DRY_RUN
 from sync_hostaway.db.engine import engine
-from sync_hostaway.db.readers.accounts import account_exists, get_account_with_sync_status
+from sync_hostaway.db.readers.accounts import get_account_with_sync_status
 from sync_hostaway.db.writers.accounts import (
     hard_delete_account,
     insert_accounts,
     soft_delete_account,
     update_account,
+)
+from sync_hostaway.routes._account_helpers import (
+    should_trigger_sync_on_update,
+    validate_account_exists_or_404,
+    validate_account_not_exists_or_422,
+    validate_client_secret_or_400,
 )
 from sync_hostaway.schemas.accounts import AccountCreatePayload, AccountUpdatePayload
 from sync_hostaway.services.account_cache import remove_account_from_cache
@@ -29,26 +35,20 @@ def create_account(
     Create or upsert a Hostaway account if it does not exist.
 
     Args:
-        payload (AccountCreatePayload): Payload containing account_id, client_secret, and optional
-                                        customer_id.
-        background_tasks (BackgroundTasks): FastAPI background task runner
+        payload: Payload containing account_id, client_secret, and optional customer_id
+        background_tasks: FastAPI background task runner
 
     Returns:
-        dict: Message confirming account creation and async sync start.
+        dict: Message confirming account creation and async sync start
     """
     try:
-        if not payload.client_secret:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Client secret is required"
-            )
+        # Validate inputs
+        validate_client_secret_or_400(payload.client_secret)
 
         with engine.connect() as conn:
-            if account_exists(conn, payload.account_id):
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"Account {payload.account_id} already exists",
-                )
+            validate_account_not_exists_or_422(conn, payload.account_id)
 
+        # Insert new account
         insert_accounts(
             engine=engine,
             data=[
@@ -64,6 +64,7 @@ def create_account(
 
         logger.info("account_created", account_id=payload.account_id)
 
+        # Schedule initial sync in background
         background_tasks.add_task(
             sync_account,
             account_id=payload.account_id,
@@ -74,7 +75,6 @@ def create_account(
 
     except HTTPException:
         raise
-
     except Exception as e:
         logger.exception("account_creation_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -101,15 +101,14 @@ def trigger_sync(
         dict: Message confirming sync has been scheduled
     """
     try:
+        # Validate account exists
         with engine.connect() as conn:
-            if not account_exists(conn, account_id):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Account {account_id} not found",
-                )
+            validate_account_exists_or_404(conn, account_id)
 
+        # Determine dry_run mode
         use_dry_run = DRY_RUN if dry_run is None else dry_run
 
+        # Schedule sync in background
         background_tasks.add_task(
             sync_account,
             account_id=account_id,
@@ -146,7 +145,7 @@ def update_account_endpoint(
     """
     try:
         with engine.begin() as conn:
-            # Check if account exists and get current state
+            # Get current account state
             account_info = get_account_with_sync_status(conn, account_id)
 
             if not account_info or not account_info["is_active"]:
@@ -155,7 +154,7 @@ def update_account_endpoint(
                     detail=f"Account {account_id} not found or inactive",
                 )
 
-            # Build update dict with only non-None values
+            # Build update dict (only non-None values)
             update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
 
             if not update_data:
@@ -164,33 +163,27 @@ def update_account_endpoint(
             # Execute update
             update_account(conn, account_id, update_data)
 
-            # Check if we should trigger sync
-            client_secret_changed = (
-                "client_secret" in update_data
-                and update_data["client_secret"] != account_info["client_secret"]
+        # Check if we should trigger sync
+        if should_trigger_sync_on_update(account_info, update_data):
+            background_tasks.add_task(
+                sync_account,
+                account_id=account_id,
+                dry_run=DRY_RUN,
             )
-            never_synced = account_info["last_sync_at"] is None
-
-            if client_secret_changed and never_synced:
-                background_tasks.add_task(
-                    sync_account,
-                    account_id=account_id,
-                    dry_run=DRY_RUN,
+            logger.info(
+                "account_updated_sync_triggered",
+                account_id=account_id,
+                reason="credentials_changed_never_synced",
+            )
+            return {
+                "message": (
+                    f"Account {account_id} updated. "
+                    f"Sync triggered (new credentials, never synced before)."
                 )
-                logger.info(
-                    "account_updated_sync_triggered",
-                    account_id=account_id,
-                    reason="credentials_changed_never_synced",
-                )
-                return {
-                    "message": (
-                        f"Account {account_id} updated. "
-                        f"Sync triggered (new credentials, never synced before)."
-                    )
-                }
+            }
 
-            logger.info("account_updated", account_id=account_id)
-            return {"message": f"Account {account_id} updated successfully"}
+        logger.info("account_updated", account_id=account_id)
+        return {"message": f"Account {account_id} updated successfully"}
 
     except HTTPException:
         raise
@@ -209,34 +202,29 @@ def delete_account_endpoint(
 
     Args:
         account_id: Hostaway account ID to delete
-        soft: If True, soft delete (set is_active=false). If False, permanently delete.
+        soft: If True, soft delete (set is_active=false). If False, permanently delete
 
     Returns:
         dict: Message confirming deletion
     """
     try:
         with engine.begin() as conn:
-            # Check if account exists
-            if not account_exists(conn, account_id):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Account {account_id} not found",
-                )
+            # Validate account exists
+            validate_account_exists_or_404(conn, account_id)
 
             if soft:
-                # Soft delete - set is_active to false
                 soft_delete_account(conn, account_id)
-                # Remove from cache so webhooks fail for this account
-                remove_account_from_cache(account_id)
                 logger.info("account_soft_deleted", account_id=account_id)
-                return {"message": f"Account {account_id} deactivated (soft delete)"}
+                message = f"Account {account_id} deactivated (soft delete)"
             else:
-                # Hard delete - permanently remove
                 hard_delete_account(conn, account_id)
-                # Remove from cache
-                remove_account_from_cache(account_id)
                 logger.info("account_hard_deleted", account_id=account_id)
-                return {"message": f"Account {account_id} permanently deleted"}
+                message = f"Account {account_id} permanently deleted"
+
+        # Remove from cache so webhooks fail for this account
+        remove_account_from_cache(account_id)
+
+        return {"message": message}
 
     except HTTPException:
         raise
