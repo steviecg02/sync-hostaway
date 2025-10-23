@@ -17,7 +17,7 @@ from sync_hostaway.models.messages import MessageThread
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77777], indirect=True)
 def test_insert_messages_creates_new_threads(
-    test_account_with_reservation: tuple[int, int]
+    test_account_with_reservation: tuple[int, int],
 ) -> None:
     """Test that insert_messages creates new message thread records."""
     account_id, reservation_id = test_account_with_reservation
@@ -97,7 +97,7 @@ def test_insert_messages_updates_existing_threads_when_messages_change(
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77775], indirect=True)
 def test_insert_messages_skips_update_when_messages_unchanged(
-    test_account_with_reservation: tuple[int, int]
+    test_account_with_reservation: tuple[int, int],
 ) -> None:
     """Test that insert_messages skips update when raw_messages is identical."""
     account_id, reservation_id = test_account_with_reservation
@@ -187,7 +187,7 @@ def test_insert_messages_dry_run_mode(test_account_with_reservation: tuple[int, 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77772], indirect=True)
 def test_insert_messages_adds_account_id_to_all_rows(
-    test_account_with_reservation: tuple[int, int]
+    test_account_with_reservation: tuple[int, int],
 ) -> None:
     """Test that insert_messages adds account_id to all message thread records."""
     account_id, reservation_id = test_account_with_reservation

@@ -17,7 +17,7 @@ from sync_hostaway.models.reservations import Reservation
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88888], indirect=True)
 def test_insert_reservations_creates_new_records(
-    test_account_with_listing: tuple[int, int]
+    test_account_with_listing: tuple[int, int],
 ) -> None:
     """Test that insert_reservations creates new reservation records in database."""
     account_id, listing_id = test_account_with_listing
@@ -55,7 +55,7 @@ def test_insert_reservations_creates_new_records(
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88887], indirect=True)
 def test_insert_reservations_updates_existing_when_payload_changes(
-    test_account_with_listing: tuple[int, int]
+    test_account_with_listing: tuple[int, int],
 ) -> None:
     """Test that insert_reservations updates existing records when payload changes."""
     account_id, listing_id = test_account_with_listing
@@ -96,7 +96,7 @@ def test_insert_reservations_updates_existing_when_payload_changes(
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88886], indirect=True)
 def test_insert_reservations_skips_update_when_payload_unchanged(
-    test_account_with_listing: tuple[int, int]
+    test_account_with_listing: tuple[int, int],
 ) -> None:
     """Test that insert_reservations skips update when payload is identical."""
     account_id, listing_id = test_account_with_listing
@@ -140,7 +140,7 @@ def test_insert_reservations_skips_update_when_payload_unchanged(
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88885], indirect=True)
 def test_insert_reservations_skips_invalid_records(
-    test_account_with_listing: tuple[int, int]
+    test_account_with_listing: tuple[int, int],
 ) -> None:
     """Test that insert_reservations skips records with missing required fields."""
     account_id, listing_id = test_account_with_listing
