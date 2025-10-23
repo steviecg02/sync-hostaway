@@ -1,7 +1,6 @@
 # Sync Hostaway
 
 [![CI/CD](https://github.com/steviecg02/sync-hostaway/actions/workflows/ci.yml/badge.svg)](https://github.com/steviecg02/sync-hostaway/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/steviecg02/sync-hostaway/branch/main/graph/badge.svg)](https://codecov.io/gh/steviecg02/sync-hostaway)
 
 A production-grade Hostaway data sync agent that:
 

@@ -74,15 +74,7 @@ jobs:
           WEBHOOK_PASSWORD: test-pass
           WEBHOOK_BASE_URL: http://localhost:8000
         run: |
-          PYTHONPATH=. pytest --cov=sync_hostaway --cov-report=xml --cov-report=term -v
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          PYTHONPATH=. pytest --cov=sync_hostaway --cov-report=term -v
 
   build-and-push:
     name: Build & Push Docker Image
