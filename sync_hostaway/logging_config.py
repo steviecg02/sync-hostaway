@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import logging
 import sys
+from typing import Any, Callable, MutableMapping, cast
 
 import structlog
 
 from sync_hostaway.config import LOG_LEVEL
+
+# Type alias for structlog processor
+Processor = Callable[[Any, str, MutableMapping[str, Any]], Any]
 
 
 def setup_logging() -> None:
@@ -33,10 +39,13 @@ def setup_logging() -> None:
 
     # Configure structlog
     # Choose renderer based on log level (JSON for production, Console for dev)
-    renderer = (
-        structlog.processors.JSONRenderer()
-        if LOG_LEVEL == "INFO"
-        else structlog.dev.ConsoleRenderer(colors=True)
+    renderer: Processor = cast(
+        Processor,
+        (
+            structlog.processors.JSONRenderer()
+            if LOG_LEVEL == "INFO"
+            else structlog.dev.ConsoleRenderer(colors=True)
+        ),
     )
 
     structlog.configure(

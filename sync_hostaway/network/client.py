@@ -12,6 +12,7 @@ from urllib.parse import urljoin
 import requests
 import structlog
 
+from sync_hostaway.metrics import api_latency, api_requests
 from sync_hostaway.network.auth import get_or_refresh_token
 
 logger = structlog.get_logger(__name__)
@@ -82,7 +83,15 @@ def fetch_page(
     while True:
         try:
             logger.debug("Requesting %s offset=%s", endpoint, params["offset"])
+
+            # Track API latency
+            start_time = time.time()
             res = requests.get(url, headers=headers, params=params, timeout=5)
+            latency = time.time() - start_time
+
+            # Record API metrics
+            api_requests.labels(endpoint=endpoint, status_code=str(res.status_code)).inc()
+            api_latency.labels(endpoint=endpoint).observe(latency)
 
             if res.status_code == 403 and account_id is not None:
                 logger.warning(

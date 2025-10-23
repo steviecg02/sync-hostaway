@@ -5,6 +5,7 @@ from sync_hostaway.cache import token_cache
 from sync_hostaway.db.engine import engine
 from sync_hostaway.db.readers.accounts import get_account_credentials
 from sync_hostaway.db.writers.accounts import update_access_token
+from sync_hostaway.metrics import token_cache_hits, token_cache_misses, token_refreshes
 
 logger = structlog.get_logger(__name__)
 TOKEN_URL = "https://api.hostaway.com/v1/accessTokens"
@@ -78,6 +79,9 @@ def refresh_access_token(account_id: int) -> str:
     # Cache the new token
     token_cache.set(account_id, new_token)
 
+    # Record metrics
+    token_refreshes.labels(account_id=str(account_id)).inc()
+
     logger.info("token_refreshed", account_id=account_id, cached=True)
     return new_token
 
@@ -98,9 +102,11 @@ def get_access_token(account_id: int) -> str:
     cached_token = token_cache.get(account_id)
     if cached_token:
         logger.debug("token_cache_hit", account_id=account_id)
+        token_cache_hits.inc()
         return cached_token
 
     logger.debug("token_cache_miss", account_id=account_id)
+    token_cache_misses.inc()
 
     # Fetch from database
     with engine.connect() as conn:
