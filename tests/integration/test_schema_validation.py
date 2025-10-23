@@ -1,9 +1,17 @@
+import os
+
 import pytest
 
 from sync_hostaway.network.auth import get_access_token
 from sync_hostaway.network.client import fetch_page
 
 # === Config ===
+
+# Skip these tests in CI - they require a real Hostaway account with valid credentials
+pytestmark = pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Schema validation tests require real Hostaway API credentials (account 59808)",
+)
 
 REQUIRED_LISTING_KEYS: set[str] = set()  # Add when known
 REQUIRED_RESERVATION_KEYS: set[str] = set()  # Add when known
