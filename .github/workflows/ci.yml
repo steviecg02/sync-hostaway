@@ -52,7 +52,11 @@ jobs:
 
       - name: Run mypy type checker
         run: mypy sync_hostaway/
-        continue-on-error: true  # Don't fail on mypy errors (pre-existing test file issues)
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: alembic upgrade head
 
       - name: Run tests with coverage
         env:
