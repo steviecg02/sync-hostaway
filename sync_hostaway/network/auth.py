@@ -1,6 +1,7 @@
 import requests
 import structlog
 
+from sync_hostaway.cache import token_cache
 from sync_hostaway.db.engine import engine
 from sync_hostaway.db.readers.accounts import get_account_credentials
 from sync_hostaway.db.writers.accounts import update_access_token
@@ -55,12 +56,17 @@ def refresh_access_token(account_id: int) -> str:
     """
     Refresh and store a new Hostaway access token for the given account.
 
+    Invalidates cached token and fetches a new one from Hostaway API.
+
     Args:
         account_id (int): Hostaway account ID.
 
     Returns:
         str: New bearer token.
     """
+    # Invalidate old cached token
+    token_cache.invalidate(account_id)
+
     with engine.begin() as conn:
         creds = get_account_credentials(conn, account_id)
         if not creds or not creds.get("client_secret"):
@@ -69,14 +75,18 @@ def refresh_access_token(account_id: int) -> str:
         new_token = create_access_token(str(account_id), creds["client_secret"])
         update_access_token(conn, account_id, new_token)
 
-    logger.info("Refreshed Hostaway access token for account_id=%s", account_id)
+    # Cache the new token
+    token_cache.set(account_id, new_token)
+
+    logger.info("token_refreshed", account_id=account_id, cached=True)
     return new_token
 
 
 def get_access_token(account_id: int) -> str:
     """
-    Get the current valid Hostaway access token from the DB.
-    Refreshes if missing.
+    Get the current valid Hostaway access token.
+
+    Checks cache first, then database. Refreshes if missing.
 
     Args:
         account_id (int): Hostaway account ID.
@@ -84,13 +94,25 @@ def get_access_token(account_id: int) -> str:
     Returns:
         str: Access token
     """
+    # Check cache first
+    cached_token = token_cache.get(account_id)
+    if cached_token:
+        logger.debug("token_cache_hit", account_id=account_id)
+        return cached_token
+
+    logger.debug("token_cache_miss", account_id=account_id)
+
+    # Fetch from database
     with engine.connect() as conn:
         creds = get_account_credentials(conn, account_id)
 
     token = creds.get("access_token") if creds else None
     if token and isinstance(token, str):
+        # Cache for next time
+        token_cache.set(account_id, token)
         return token
 
+    # No token found, refresh
     return refresh_access_token(account_id)
 
 

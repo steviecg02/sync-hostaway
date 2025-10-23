@@ -4,17 +4,27 @@ Unit tests for network/auth.py token management.
 
 from __future__ import annotations
 
+from typing import Generator
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import requests
 
+from sync_hostaway.cache import token_cache
 from sync_hostaway.network.auth import (
     create_access_token,
     get_access_token,
     get_or_refresh_token,
     refresh_access_token,
 )
+
+
+@pytest.fixture(autouse=True)
+def clear_token_cache() -> Generator[None, None, None]:
+    """Clear token cache before and after each test."""
+    token_cache.clear()
+    yield
+    token_cache.clear()
 
 
 @pytest.mark.unit
