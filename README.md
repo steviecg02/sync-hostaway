@@ -1,5 +1,8 @@
 # Sync Hostaway
 
+[![CI/CD](https://github.com/steviecg02/sync-hostaway/actions/workflows/ci.yml/badge.svg)](https://github.com/steviecg02/sync-hostaway/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/steviecg02/sync-hostaway/branch/main/graph/badge.svg)](https://codecov.io/gh/steviecg02/sync-hostaway)
+
 A production-grade Hostaway data sync agent that:
 
 - Ingests listings, reservations, and messages from Hostaway's PMS API
@@ -90,6 +93,36 @@ uvicorn sync_hostaway.main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive API documentation.
+
+---
+
+## Production Deployment (Using Pre-built Container)
+
+**Pull the latest image from GitHub Container Registry:**
+
+```bash
+# Pull latest image
+docker pull ghcr.io/steviecg02/sync-hostaway:latest
+
+# Or pull a specific commit
+docker pull ghcr.io/steviecg02/sync-hostaway:main-67fbfd7
+```
+
+**Run with docker-compose:**
+
+```bash
+# Create .env file with your configuration
+# Then run:
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop
+docker-compose down
+```
+
+**Container images are automatically built and pushed to GitHub Container Registry on every push to `main`.**
 
 ---
 
