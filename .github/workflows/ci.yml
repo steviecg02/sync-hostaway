@@ -56,6 +56,12 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
+          LOG_LEVEL: INFO
+          DRY_RUN: false
+          WEBHOOK_USERNAME: test-user
+          WEBHOOK_PASSWORD: test-pass
+          WEBHOOK_BASE_URL: http://localhost:8000
         run: alembic upgrade head
 
       - name: Run tests with coverage
