@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 from typing import Any
 
 import structlog
@@ -8,6 +7,7 @@ from sqlalchemy.engine import Engine
 from sync_hostaway.config import DEBUG
 from sync_hostaway.db.writers._upsert import upsert_with_distinct_check
 from sync_hostaway.models.listings import Listing
+from sync_hostaway.utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -24,7 +24,7 @@ def insert_listings(
         data: List of raw Hostaway listing payloads (dicts)
         dry_run: If True, skip DB writes and log only
     """
-    now = datetime.utcnow()
+    now = utc_now()
     rows = []
 
     for listing in data:

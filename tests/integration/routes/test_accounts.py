@@ -1,9 +1,10 @@
 """
-Integration tests for /hostaway/accounts endpoints.
+Integration tests for /api/v1/hostaway/accounts endpoints.
 
 Tests account CRUD operations (POST, PATCH, DELETE) with real database.
 """
 
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +17,7 @@ from sync_hostaway.models.base import Base
 
 
 @pytest.fixture(scope="module")
-def test_engine() -> Engine:
+def test_engine() -> Generator[Engine, None, None]:
     """Create a test database engine."""
     # Use a test database
     db_url = "postgresql://postgres:postgres@localhost:5432/postgres"
@@ -39,10 +40,10 @@ def client() -> TestClient:
 
 
 @patch("sync_hostaway.routes.accounts.sync_account")
-def test_create_account(mock_sync: any, client: TestClient, test_engine: Engine) -> None:
-    """Test POST /hostaway/accounts creates a new account."""
+def test_create_account(mock_sync: Any, client: TestClient, test_engine: Engine) -> None:
+    """Test POST /api/v1/hostaway/accounts creates a new account."""
     response = client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99999,
             "client_secret": "test-secret-123",
@@ -65,11 +66,11 @@ def test_create_account(mock_sync: any, client: TestClient, test_engine: Engine)
 
 
 @patch("sync_hostaway.routes.accounts.sync_account")
-def test_create_duplicate_account_fails(mock_sync: any, client: TestClient) -> None:
-    """Test POST /hostaway/accounts fails for duplicate account_id."""
+def test_create_duplicate_account_fails(mock_sync: Any, client: TestClient) -> None:
+    """Test POST /api/v1/hostaway/accounts fails for duplicate account_id."""
     # Create first account
     response1 = client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99998,
             "client_secret": "test-secret-456",
@@ -79,7 +80,7 @@ def test_create_duplicate_account_fails(mock_sync: any, client: TestClient) -> N
 
     # Try to create duplicate
     response2 = client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99998,
             "client_secret": "different-secret",
@@ -91,11 +92,11 @@ def test_create_duplicate_account_fails(mock_sync: any, client: TestClient) -> N
 
 
 @patch("sync_hostaway.routes.accounts.sync_account")
-def test_update_account(mock_sync: any, client: TestClient, test_engine: Engine) -> None:
-    """Test PATCH /hostaway/accounts updates account credentials."""
+def test_update_account(mock_sync: Any, client: TestClient, test_engine: Engine) -> None:
+    """Test PATCH /api/v1/hostaway/accounts updates account credentials."""
     # Create account first
     client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99997,
             "client_secret": "original-secret",
@@ -104,7 +105,7 @@ def test_update_account(mock_sync: any, client: TestClient, test_engine: Engine)
 
     # Update it
     response = client.patch(
-        "/hostaway/accounts/99997",
+        "/api/v1/hostaway/accounts/99997",
         json={
             "client_secret": "updated-secret",
         },
@@ -119,15 +120,16 @@ def test_update_account(mock_sync: any, client: TestClient, test_engine: Engine)
             text("SELECT client_secret FROM hostaway.accounts WHERE account_id = 99997")
         ).fetchone()
 
+        assert result is not None
         assert result[0] == "updated-secret"
 
 
 @patch("sync_hostaway.routes.accounts.sync_account")
-def test_soft_delete_account(mock_sync: any, client: TestClient, test_engine: Engine) -> None:
-    """Test DELETE /hostaway/accounts with soft=true deactivates account."""
+def test_soft_delete_account(mock_sync: Any, client: TestClient, test_engine: Engine) -> None:
+    """Test DELETE /api/v1/hostaway/accounts with soft=true deactivates account."""
     # Create account
     client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99996,
             "client_secret": "test-secret",
@@ -135,7 +137,7 @@ def test_soft_delete_account(mock_sync: any, client: TestClient, test_engine: En
     )
 
     # Soft delete
-    response = client.delete("/hostaway/accounts/99996?soft=true")
+    response = client.delete("/api/v1/hostaway/accounts/99996?soft=true")
 
     assert response.status_code == 200
     assert "deactivated" in response.json()["message"].lower()
@@ -151,11 +153,11 @@ def test_soft_delete_account(mock_sync: any, client: TestClient, test_engine: En
 
 
 @patch("sync_hostaway.routes.accounts.sync_account")
-def test_hard_delete_account(mock_sync: any, client: TestClient, test_engine: Engine) -> None:
-    """Test DELETE /hostaway/accounts with soft=false permanently deletes account."""
+def test_hard_delete_account(mock_sync: Any, client: TestClient, test_engine: Engine) -> None:
+    """Test DELETE /api/v1/hostaway/accounts with soft=false permanently deletes account."""
     # Create account
     client.post(
-        "/hostaway/accounts",
+        "/api/v1/hostaway/accounts",
         json={
             "account_id": 99995,
             "client_secret": "test-secret",
@@ -163,7 +165,7 @@ def test_hard_delete_account(mock_sync: any, client: TestClient, test_engine: En
     )
 
     # Hard delete
-    response = client.delete("/hostaway/accounts/99995?soft=false")
+    response = client.delete("/api/v1/hostaway/accounts/99995?soft=false")
 
     assert response.status_code == 200
     assert "permanently deleted" in response.json()["message"].lower()

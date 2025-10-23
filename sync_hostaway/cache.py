@@ -10,6 +10,8 @@ For distributed deployments with multiple instances, consider migrating to Redis
 
 from datetime import datetime, timedelta
 
+from sync_hostaway.utils.datetime import utc_now
+
 
 class TokenCache:
     """
@@ -51,7 +53,7 @@ class TokenCache:
         """
         if account_id in self._cache:
             token, expires_at = self._cache[account_id]
-            if datetime.utcnow() < expires_at:
+            if utc_now() < expires_at:
                 return token
             # Expired - remove from cache
             del self._cache[account_id]
@@ -65,7 +67,7 @@ class TokenCache:
             account_id: Hostaway account ID
             token: Access token to cache
         """
-        expires_at = datetime.utcnow() + self.ttl
+        expires_at = utc_now() + self.ttl
         self._cache[account_id] = (token, expires_at)
 
     def invalidate(self, account_id: int) -> None:

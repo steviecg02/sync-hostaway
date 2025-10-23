@@ -31,7 +31,7 @@ def insert_reservations(
     ids = [r["id"] for r in data]
     dups = [rid for rid, count in Counter(ids).items() if count > 1]
     if dups:
-        logger.error("❌ Found %s duplicate reservation_id(s) in batch:", len(dups))
+        logger.error("Found %s duplicate reservation_id(s) in batch:", len(dups))
         for rid in dups:
             logger.error(" - reservation_id=%s, count=%s", rid, ids.count(rid))
 

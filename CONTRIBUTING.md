@@ -52,21 +52,14 @@ mypy --version
 
 ### Environment Variables
 
-Create a `.env` file in project root:
+Create a `.env` file from the template:
 
 ```bash
-# Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
-
-# Logging
-LOG_LEVEL=INFO
-
-# Development
-DRY_RUN=false
-
-# CORS (comma-separated origins)
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+cp .env.example .env
+# Edit .env with your configuration
 ```
+
+The `.env.example` file contains all required environment variables with documentation.
 
 ### Local Development with Docker Compose
 
@@ -847,7 +840,7 @@ We follow **Conventional Commits**:
 ```
 feat: Add webhook Basic Auth validation
 
-Implements HTTP Basic Auth for /webhooks/hostaway endpoint.
+Implements HTTP Basic Auth for /api/v1/hostaway/webhooks endpoint.
 Credentials are validated against accounts table.
 
 Closes #123

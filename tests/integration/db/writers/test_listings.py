@@ -4,6 +4,8 @@ Integration tests for listings database writer.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sqlalchemy import select
 
@@ -14,7 +16,7 @@ from sync_hostaway.models.listings import Listing
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99999], indirect=True)
-def test_insert_listings_creates_new_records(test_account):
+def test_insert_listings_creates_new_records(test_account: int) -> None:
     """Test that insert_listings creates new listing records in database."""
     account_id = test_account
     data = [
@@ -39,7 +41,7 @@ def test_insert_listings_creates_new_records(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99998], indirect=True)
-def test_insert_listings_updates_existing_records_when_payload_changes(test_account):
+def test_insert_listings_updates_existing_records_when_payload_changes(test_account: int) -> None:
     """Test that insert_listings updates existing listings when raw_payload changes."""
     account_id = test_account
     listing_id = 2001
@@ -62,7 +64,7 @@ def test_insert_listings_updates_existing_records_when_payload_changes(test_acco
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99997], indirect=True)
-def test_insert_listings_skips_update_when_payload_unchanged(test_account):
+def test_insert_listings_skips_update_when_payload_unchanged(test_account: int) -> None:
     """Test that insert_listings skips update when raw_payload is identical (IS DISTINCT FROM)."""
     account_id = test_account
     listing_id = 3001
@@ -76,6 +78,7 @@ def test_insert_listings_skips_update_when_payload_unchanged(test_account):
         initial_result = conn.execute(
             select(Listing.updated_at).where(Listing.id == listing_id)
         ).fetchone()
+        assert initial_result is not None
         initial_updated_at = initial_result[0]
 
     # Re-insert with identical payload
@@ -86,6 +89,7 @@ def test_insert_listings_skips_update_when_payload_unchanged(test_account):
         final_result = conn.execute(
             select(Listing.updated_at).where(Listing.id == listing_id)
         ).fetchone()
+        assert final_result is not None
         final_updated_at = final_result[0]
 
         assert (
@@ -95,10 +99,10 @@ def test_insert_listings_skips_update_when_payload_unchanged(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99996], indirect=True)
-def test_insert_listings_skips_invalid_records(test_account):
+def test_insert_listings_skips_invalid_records(test_account: int) -> None:
     """Test that insert_listings skips listings with missing id."""
     account_id = test_account
-    data = [
+    data: list[dict[str, Any]] = [
         {"id": 4001, "name": "Valid Listing"},
         {"name": "Invalid - No ID"},  # Missing id
         {"id": 4002, "name": "Another Valid Listing"},
@@ -117,10 +121,10 @@ def test_insert_listings_skips_invalid_records(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99995], indirect=True)
-def test_insert_listings_handles_empty_list(test_account):
+def test_insert_listings_handles_empty_list(test_account: int) -> None:
     """Test that insert_listings handles empty data list gracefully."""
     account_id = test_account
-    data = []
+    data: list[dict[str, Any]] = []
 
     # Should not raise exception
     insert_listings(engine, account_id, data)
@@ -133,7 +137,7 @@ def test_insert_listings_handles_empty_list(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [99994], indirect=True)
-def test_insert_listings_dry_run_mode(test_account):
+def test_insert_listings_dry_run_mode(test_account: int) -> None:
     """Test that insert_listings in dry_run mode doesn't write to database."""
     account_id = test_account
     data = [{"id": 5001, "name": "Dry Run Listing"}]

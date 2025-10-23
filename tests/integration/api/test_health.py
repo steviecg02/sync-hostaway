@@ -15,7 +15,7 @@ client = TestClient(app)
 
 
 @pytest.mark.integration
-def test_health_endpoint_returns_ok():
+def test_health_endpoint_returns_ok() -> None:
     """Test that /health endpoint returns 200 with status ok."""
     response = client.get("/health")
 
@@ -24,7 +24,7 @@ def test_health_endpoint_returns_ok():
 
 
 @pytest.mark.integration
-def test_readiness_endpoint_returns_ready_when_db_accessible():
+def test_readiness_endpoint_returns_ready_when_db_accessible() -> None:
     """Test that /ready endpoint returns 200 when database is accessible."""
     response = client.get("/ready")
 
@@ -35,7 +35,7 @@ def test_readiness_endpoint_returns_ready_when_db_accessible():
 
 
 @pytest.mark.integration
-def test_readiness_endpoint_returns_503_when_db_not_accessible():
+def test_readiness_endpoint_returns_503_when_db_not_accessible() -> None:
     """Test that /ready endpoint returns 503 when database is not accessible."""
     # Mock check_engine_health to simulate database failure
     with patch("sync_hostaway.routes.health.check_engine_health") as mock_health:
@@ -50,7 +50,7 @@ def test_readiness_endpoint_returns_503_when_db_not_accessible():
 
 
 @pytest.mark.integration
-def test_health_endpoint_always_returns_ok_even_if_db_down():
+def test_health_endpoint_always_returns_ok_even_if_db_down() -> None:
     """Test that /health endpoint returns 200 even if database is down.
 
     Health endpoint should only check if the application process is running,

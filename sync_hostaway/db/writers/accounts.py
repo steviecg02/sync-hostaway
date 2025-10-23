@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 from typing import Any
 
 import structlog
@@ -8,6 +7,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from sync_hostaway.config import DEBUG
 from sync_hostaway.models.accounts import Account
+from sync_hostaway.utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -21,7 +21,7 @@ def insert_accounts(engine: Engine, data: list[dict[str, Any]], dry_run: bool = 
         data (list[dict[str, Any]]): Account rows to insert.
         dry_run (bool): If True, skip DB writes and log only.
     """
-    now = datetime.utcnow()
+    now = utc_now()
     rows: list[dict[str, Any]] = []
 
     for acct in data:
@@ -92,7 +92,7 @@ def update_access_token(conn: Connection, account_id: int, token: str) -> None:
         account_id (int): Hostaway account ID.
         token (str): New bearer token to save.
     """
-    now = datetime.utcnow()
+    now = utc_now()
 
     stmt = insert(Account).values(
         [
@@ -127,7 +127,7 @@ def update_account(conn: Connection, account_id: int, data: dict[str, Any]) -> N
     """
     from sqlalchemy import update
 
-    now = datetime.utcnow()
+    now = utc_now()
     data["updated_at"] = now
 
     stmt = update(Account).where(Account.account_id == account_id).values(**data)
@@ -145,7 +145,7 @@ def soft_delete_account(conn: Connection, account_id: int) -> None:
     """
     from sqlalchemy import update
 
-    now = datetime.utcnow()
+    now = utc_now()
 
     stmt = (
         update(Account)
@@ -180,7 +180,7 @@ def update_last_sync(conn: Connection, account_id: int) -> None:
     """
     from sqlalchemy import update
 
-    now = datetime.utcnow()
+    now = utc_now()
 
     stmt = (
         update(Account)
@@ -202,7 +202,7 @@ def update_webhook_id(conn: Connection, account_id: int, webhook_id: int) -> Non
     """
     from sqlalchemy import update
 
-    now = datetime.utcnow()
+    now = utc_now()
 
     stmt = (
         update(Account)

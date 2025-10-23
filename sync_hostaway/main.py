@@ -34,11 +34,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API versioning
+API_V1_PREFIX = "/api/v1"
+
 # Register routers
+# Unversioned routes (monitoring/health checks)
 app.include_router(health_router, tags=["Health"])
 app.include_router(metrics_router, tags=["Metrics"])
-app.include_router(accounts_router, prefix="/hostaway", tags=["Accounts"])
-app.include_router(webhook_router, prefix="/hostaway", tags=["Webhooks"])
+
+# Versioned API routes
+app.include_router(accounts_router, prefix=f"{API_V1_PREFIX}/hostaway", tags=["Accounts"])
+app.include_router(webhook_router, prefix=f"{API_V1_PREFIX}/hostaway", tags=["Webhooks"])
 
 
 @app.on_event("startup")

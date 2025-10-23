@@ -195,17 +195,17 @@ This service is **one component** of a larger multi-PMS synchronization platform
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/hostaway/accounts` | Create account + trigger background sync |
-| GET | `/hostaway/accounts/{id}` | Get account details with sync status |
-| PUT | `/hostaway/accounts/{id}` | Update account credentials |
-| DELETE | `/hostaway/accounts/{id}?hard=true` | Soft or hard delete account |
-| POST | `/hostaway/accounts/{id}/sync` | Manually trigger sync (full/incremental) |
+| POST | `/api/v1/hostaway/accounts` | Create account + trigger background sync |
+| GET | `/api/v1/hostaway/accounts/{id}` | Get account details with sync status |
+| PUT | `/api/v1/hostaway/accounts/{id}` | Update account credentials |
+| DELETE | `/api/v1/hostaway/accounts/{id}?hard=true` | Soft or hard delete account |
+| POST | `/api/v1/hostaway/accounts/{id}/sync` | Manually trigger sync (full/incremental) |
 
 ### Webhooks
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/hostaway/webhooks/hostaway` | Receive Hostaway webhook events |
+| POST | `/api/v1/hostaway/webhooks` | Receive Hostaway webhook events |
 
 **Event Types Supported (Future):**
 - `listing.created`, `listing.updated`, `listing.deleted`
@@ -368,7 +368,7 @@ def fetch_paginated(endpoint: str, account_id: int, limit: int = 100) -> list[di
 ### Full Sync Workflow
 
 ```
-1. User: POST /hostaway/accounts
+1. User: POST /api/v1/hostaway/accounts
    → Create account in database
    → Schedule background task: sync_account(account_id, mode=FULL)
 
@@ -401,7 +401,7 @@ def fetch_paginated(endpoint: str, account_id: int, limit: int = 100) -> list[di
 ### Webhook Update Workflow (Future)
 
 ```
-1. Hostaway sends: POST /hostaway/webhooks/hostaway
+1. Hostaway sends: POST /api/v1/hostaway/webhooks
    {
      "eventType": "reservation.updated",
      "accountId": 12345,
@@ -530,22 +530,16 @@ make run-api
 
 ## Future Enhancements
 
-### Short-Term (P1)
-1. Complete webhook event handlers
-2. Add health/readiness endpoints
-3. Implement secret encryption
-4. Achieve 80% test coverage
+### Near-Term
+1. Complete webhook event handlers (see `tasks/webhook-completion.md`)
+2. Implement secret encryption for credentials
+3. Add webhook event signature validation
 
-### Medium-Term (P2)
-1. Add CI/CD pipeline (GitHub Actions)
-2. Implement structured logging
-3. Refactor long functions in routes/accounts.py
-
-### Long-Term (P3)
-1. Token caching service (Redis)
-2. Prometheus metrics
-3. Incremental sync logic
-4. Multi-PMS normalization service
+### Long-Term
+1. Incremental sync logic optimization
+2. Multi-PMS normalization service
+3. Advanced monitoring and alerting
+4. Token refresh optimization with Redis
 
 **Reference:** `tasks/` directory for detailed task breakdown
 

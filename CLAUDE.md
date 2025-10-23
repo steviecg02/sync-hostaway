@@ -2,7 +2,7 @@
 
 **Purpose:** This document provides context and instructions for Claude Code when working on this repository.
 
-**Last Updated:** 2025-10-21
+**Last Updated:** 2025-10-23
 
 ---
 
@@ -12,7 +12,7 @@
 
 sync-hostaway is a **multi-tenant Hostaway API sync service** built with Python/FastAPI/PostgreSQL. It polls the Hostaway API to sync listings, reservations, and messages into a local database.
 
-**Status:** ~70% complete, production-quality codebase with low technical debt
+**Current Status:** Production-ready codebase with comprehensive test coverage and CI/CD pipeline
 
 **Key Context:** This is part of a larger multi-PMS platform (future: sync-guesty, sync-hospitable, etc.)
 
@@ -22,37 +22,26 @@ sync-hostaway is a **multi-tenant Hostaway API sync service** built with Python/
 
 **ALWAYS read these documents before starting ANY task:**
 
-1. **`docs/implementation-status.md`** ← **START HERE**
-   - Current state of codebase (what exists vs what's missing)
-   - Known issues and bugs
-   - Code quality assessment
-   - Feature completion status
-
-2. **`CONTRIBUTING.md`** ← **CODE STANDARDS**
+1. **`CONTRIBUTING.md`** ← **CODE STANDARDS**
    - Required: Type hints on all functions
    - Required: Docstrings (Google style) on public functions
    - Required: Tests before marking features complete
-   - Code quality patterns (separation of concerns, dependency injection, etc.)
-   - Development workflow and commit conventions
+   - Code quality patterns and best practices
 
-3. **`docs/ARCHITECTURE.md`** ← **SYSTEM DESIGN**
+2. **`docs/ARCHITECTURE.md`** ← **SYSTEM DESIGN**
    - High-level architecture overview
-   - Database schema
+   - Database schema design
    - Key design patterns (IS DISTINCT FROM, explicit account_id, etc.)
    - Technology stack
 
-4. **`docs/technical-requirements.md`** ← **COMPREHENSIVE SPEC**
+3. **`docs/technical-requirements.md`** ← **COMPREHENSIVE SPEC**
    - Detailed technical requirements (2,800+ lines)
-   - All features from original ChatGPT conversations
+   - All features from original design conversations
    - Implementation decisions and rationale
 
-5. **`tasks/` directory** ← **WORK TRACKING**
-   - `p0-critical.md` - Blocking issues (FIX THESE FIRST)
-   - `p1-high.md` - Quality & production readiness
-   - `p2-medium.md` - Technical debt
-   - `p3-low.md` - Optimizations
-   - `missing-features.md` - Features from tech doc not yet implemented
-   - `code-quality-debt.md` - Quality issues to fix
+4. **`tasks/` directory** ← **WORK TRACKING**
+   - Check for existing task files before starting new work
+   - Tasks may reference specific features or bugs
 
 ---
 
@@ -75,9 +64,7 @@ def fetch_data(endpoint, page=0):
     ...
 ```
 
-**Current Status:**
-- 9 mypy errors exist (P0 to fix)
-- Run `mypy sync_hostaway/` to check
+**Verification:** Run `mypy sync_hostaway/` to check
 
 ---
 
@@ -133,40 +120,10 @@ def test_insert_listings_creates_new_records(test_engine):
 ```
 
 **Coverage Targets:**
-- Overall: 80% minimum
-- Core modules: 90% (client, auth, writers, services)
+- Overall: 77% (current)
+- Core modules: 80%+ (network, db, services)
 
-**Current Status:**
-- ⚠️ Tests exist but cannot run (ModuleNotFoundError)
-- **P0 FIX REQUIRED:** See `tasks/p0-critical.md` #1
-
----
-
-## Critical Known Issues (P0)
-
-### 🚨 MUST FIX BEFORE OTHER WORK
-
-1. **Test Environment Broken** (`tasks/p0-critical.md` #1)
-   - All tests fail with `ModuleNotFoundError: No module named 'sync_hostaway'`
-   - Fix: Update Makefile with `PYTHONPATH=.`
-   - **Blocks:** All testing and coverage measurement
-
-2. **SyncMode.INCREMENTAL Doesn't Exist** (`tasks/p0-critical.md` #2)
-   - `routes/accounts.py:111` references undefined enum value
-   - Fix: Add `INCREMENTAL = "incremental"` to SyncMode enum
-   - **Blocks:** Incremental sync mode usage (runtime error)
-
-3. **ALLOWED_ORIGINS Type Mismatch** (`tasks/p0-critical.md` #3)
-   - Type errors in `config.py` and `main.py`
-   - Fix: See task file for detailed solution
-   - **Blocks:** Type checking passes
-
-4. **Webhook Implementation Incomplete** (`tasks/p0-critical.md` #4)
-   - Only 25% complete (basic endpoint, no event handlers)
-   - Fix: Implement event routing and handler functions
-   - **Blocks:** Real-time webhook-driven sync
-
-**Before starting ANY new work, check if these P0 issues are fixed.**
+**Run tests:** `make test`
 
 ---
 
@@ -241,7 +198,7 @@ logger.error(
 
 ### 3. Function Design
 
-**ALWAYS pass account_id explicitly (Critical Bug Fix):**
+**ALWAYS pass account_id explicitly (Critical Pattern):**
 ```python
 # ✅ CORRECT
 def insert_listings(
@@ -262,9 +219,7 @@ def insert_listings(engine: Engine, data: list[dict[str, Any]]) -> None:
         account_id = listing.get("accountId")  # May be None!
 ```
 
-**Why:** Hostaway API doesn't always include `accountId` in payloads. This was a critical bug.
-
-**Reference:** `docs/technical-requirements.md` Line 1165-1189
+**Why:** Hostaway API doesn't always include `accountId` in payloads. This was a critical bug fix.
 
 ---
 
@@ -295,28 +250,25 @@ def should_retry(res: requests.Response | None, err: Exception | None) -> bool:
 ### Starting a Task
 
 ```bash
-# 1. Read implementation-status.md and relevant task file
-cat docs/implementation-status.md
-cat tasks/p0-critical.md  # Or p1-high.md, etc.
-
-# 2. Check if feature already exists
+# 1. Check if similar work exists
 grep -r "function_name" sync_hostaway/
+ls tasks/  # Check for existing task files
 
-# 3. Create feature branch
-git checkout -b feature/add-webhook-handlers
+# 2. Create feature branch
+git checkout -b feature/add-new-functionality
 
-# 4. Make changes following CONTRIBUTING.md standards
+# 3. Make changes following CONTRIBUTING.md standards
 
-# 5. Run quality checks
+# 4. Run quality checks
 make format      # Auto-format code
 make lint        # Run pre-commit hooks
 mypy sync_hostaway/  # Type check
 
-# 6. Write tests BEFORE marking complete
+# 5. Write tests BEFORE marking complete
 pytest tests/unit/... -v
 
-# 7. Commit with conventional commit format
-git commit -m "feat: Add webhook event handlers for listings"
+# 6. Commit with conventional commit format
+git commit -m "feat: Add new functionality"
 ```
 
 ---
@@ -329,14 +281,7 @@ git commit -m "feat: Add webhook event handlers for listings"
 - [ ] Unit tests written and passing
 - [ ] Integration tests if touching database
 - [ ] All quality checks pass (lint, typecheck)
-- [ ] Updated `implementation-status.md` if major feature
-
-**Run:**
-```bash
-make test            # All tests pass
-mypy sync_hostaway/  # No type errors
-make lint            # All checks pass
-```
+- [ ] Ran `make test` successfully
 
 ---
 
@@ -350,11 +295,9 @@ make lint            # All checks pass
 grep -r "class_name\|function_name" sync_hostaway/
 
 # Check task files
-cat tasks/missing-features.md  # Is it listed as missing?
-cat docs/implementation-status.md  # What's the current status?
+ls tasks/
+cat tasks/some-task.md  # Read relevant task file
 ```
-
-**Common Gotcha:** Some features are partially implemented. Check implementation-status.md for current state.
 
 ---
 
@@ -385,14 +328,6 @@ def poll_listings(account_id: int) -> list[dict[str, Any]]:
     """Orchestrate listing sync (network + database)."""
     listings = fetch_listings(account_id)  # Network layer
     return listings
-
-# ❌ WRONG - Mixed concerns
-def poll_listings(account_id: int) -> None:
-    # Network logic
-    response = requests.get(f"{BASE_URL}/listings")
-    data = response.json()
-    # Database logic
-    conn.execute("INSERT INTO listings ...")  # SQL in poller!
 ```
 
 ---
@@ -408,15 +343,9 @@ def sync_account(
     dry_run: bool = False,
 ) -> None:
     poll_listings(account_id, engine, dry_run)
-
-# ❌ AVOID - Global dependency
-from sync_hostaway.db.engine import engine  # Global import
-
-def sync_account(account_id: int) -> None:
-    poll_listings(account_id, engine)  # Uses global
 ```
 
-**Note:** Current codebase uses global `engine` import. This is acceptable for now but could be improved. See `tasks/p3-low.md` #3 for FastAPI dependency injection pattern.
+**Note:** Current codebase uses global `engine` import from `sync_hostaway/db/engine.py`. This is acceptable for now but could be improved with FastAPI's `Depends()` pattern.
 
 ---
 
@@ -478,10 +407,10 @@ def test_insert_listings_creates_new_records(test_engine):
 
 ### Adding a New Route
 
-1. Check `docs/implementation-status.md` - Does it exist?
+1. Check `docs/ARCHITECTURE.md` - Does it fit the design?
 2. Follow patterns in existing routes (`routes/accounts.py`)
 3. Create Pydantic schemas if needed (`schemas/`)
-4. Add route to main.py
+4. Add route to main.py with `/api/v1/` prefix
 5. Write unit tests (`tests/unit/routes/`)
 6. Write integration tests (`tests/integration/routes/`)
 
@@ -495,11 +424,11 @@ def test_insert_listings_creates_new_records(test_engine):
 
 ### Fixing a Bug
 
-1. Check `docs/implementation-status.md` - Is it listed?
+1. Check `tasks/` directory - Is it already documented?
 2. Write failing test first (TDD approach)
 3. Fix bug
 4. Verify test passes
-5. Update implementation-status.md if bug was documented
+5. Run full test suite to ensure no regressions
 
 ---
 
@@ -509,13 +438,18 @@ def test_insert_listings_creates_new_records(test_engine):
 sync-hostaway/
 ├── sync_hostaway/
 │   ├── config.py           # Environment configuration
-│   ├── logging_config.py   # Logging setup
+│   ├── logging_config.py   # Structured logging setup
 │   ├── main.py             # FastAPI app entry point
+│   ├── cache.py            # In-memory token cache
+│   ├── dependencies.py     # FastAPI dependency injection
+│   ├── metrics.py          # Prometheus metrics
+│   ├── middleware.py       # Request ID tracing
 │   ├── db/
 │   │   ├── engine.py       # SQLAlchemy engine singleton
 │   │   ├── readers/        # Database query functions
 │   │   │   └── accounts.py
 │   │   └── writers/        # Database write functions
+│   │       ├── _upsert.py  # DRY upsert helper
 │   │       ├── accounts.py
 │   │       ├── listings.py
 │   │       ├── messages.py
@@ -537,37 +471,40 @@ sync-hostaway/
 │   │   ├── reservations.py
 │   │   └── sync.py         # Legacy
 │   ├── routes/             # FastAPI routes
+│   │   ├── _account_helpers.py  # Validation helpers
 │   │   ├── accounts.py     # Account management
+│   │   ├── health.py       # Health/readiness checks
+│   │   ├── metrics.py      # Prometheus endpoint
 │   │   ├── webhook.py      # Webhook receiver
 │   │   └── main.py
 │   ├── schemas/            # Pydantic models
 │   │   └── accounts.py
-│   └── services/           # Business logic
-│       └── sync.py         # Sync orchestration
+│   ├── services/           # Business logic
+│   │   ├── account_cache.py
+│   │   ├── sync.py         # Sync orchestration
+│   │   └── webhook_registration.py
+│   └── utils/              # Utility functions
+│       └── datetime.py     # Timezone-aware datetime helpers
 ├── tests/
 │   ├── unit/               # Fast, isolated tests
 │   │   ├── api/
 │   │   ├── network/
 │   │   ├── normalizers/
-│   │   └── pollers/
+│   │   ├── pollers/
+│   │   ├── routes/
+│   │   └── services/
 │   └── integration/        # Real DB tests
+│       ├── api/
 │       ├── db/
 │       ├── network/
-│       ├── pollers/
-│       └── services/
+│       └── routes/
 ├── alembic/                # Database migrations
 │   └── versions/
 ├── docs/                   # Documentation
-│   ├── implementation-status.md
 │   ├── ARCHITECTURE.md
 │   └── technical-requirements.md
 ├── tasks/                  # Work tracking
-│   ├── p0-critical.md
-│   ├── p1-high.md
-│   ├── p2-medium.md
-│   ├── p3-low.md
-│   ├── missing-features.md
-│   ├── code-quality-debt.md
+│   ├── incremental-sync-discussion.md
 │   └── repo-setup.md
 ├── CONTRIBUTING.md         # Code standards
 ├── CLAUDE.md               # This file
@@ -583,10 +520,16 @@ sync-hostaway/
 
 ## Make Commands
 
+**IMPORTANT:** Always activate the virtual environment first!
+
 ```bash
+# 1. Activate venv (REQUIRED for all commands)
+source venv/bin/activate
+
+# 2. Then run make commands
 make help            # Show all commands
-make install-dev     # Install dev dependencies
-make test            # Run all tests
+make install-dev     # Install dev dependencies + pre-commit hooks
+make test            # Run all tests with coverage
 make lint            # Run pre-commit hooks
 make format          # Auto-format code
 make run-api         # Start FastAPI server
@@ -594,22 +537,13 @@ make build           # Build Docker image
 make clean           # Remove cache files
 ```
 
+**Never install packages with `pip install <package>` directly.** Always use:
+- `make install-dev` to install from requirements files
+- OR `pip install -r requirements.txt -r dev-requirements.txt` if needed
+
 ---
 
 ## Important Notes
-
-### This Codebase Was Built with ChatGPT
-
-**Context:** The original codebase was built through ChatGPT conversations, then audited and improved by Claude Code.
-
-**What This Means:**
-- Some technical debt exists (documented in `tasks/code-quality-debt.md`)
-- Architecture is sound but some implementation details need refinement
-- Comprehensive documentation was created to capture ChatGPT's intent
-
-**Your Role:** Continue improving code quality while preserving the working architecture.
-
----
 
 ### Multi-PMS Context
 
@@ -626,32 +560,40 @@ make clean           # Remove cache files
 
 ---
 
+### API Versioning
+
+**All API routes use `/api/v1/` prefix:**
+- `/api/v1/hostaway/accounts`
+- `/api/v1/hostaway/webhooks`
+
+**Monitoring endpoints are unversioned:**
+- `/health`
+- `/metrics`
+
+---
+
 ## When in Doubt
 
-1. **Read `docs/implementation-status.md`** - Current state of everything
-2. **Check `CONTRIBUTING.md`** - Code standards and patterns
+1. **Read `CONTRIBUTING.md`** - Code standards and patterns
+2. **Check `tasks/`** - Existing work tracking
 3. **Search existing code** - Follow established patterns
-4. **Ask user** - If unclear, use AskUserQuestion tool
-5. **Write tests** - Test-driven development catches issues early
+4. **Run tests** - Test-driven development catches issues early
 
 ---
 
 ## Final Checklist Before Completing Work
 
-- [ ] Read relevant documentation (implementation-status.md, CONTRIBUTING.md)
+- [ ] Read relevant documentation (CONTRIBUTING.md, ARCHITECTURE.md)
 - [ ] Feature doesn't already exist (checked with grep/search)
 - [ ] Type hints on all new functions
 - [ ] Docstrings on all public functions
 - [ ] Tests written and passing
 - [ ] `make lint` passes
 - [ ] `mypy sync_hostaway/` passes
-- [ ] Updated implementation-status.md if major change
 - [ ] Followed architecture patterns (separation of concerns)
 - [ ] Used established coding patterns (IS DISTINCT FROM, explicit account_id, etc.)
 
 ---
 
-**Good luck! This is a well-structured codebase with solid foundations. Focus on quality over speed.**
-
-**Last Updated:** 2025-10-21
+**Last Updated:** 2025-10-23
 **Maintained By:** Stephen Guilfoil

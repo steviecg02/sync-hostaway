@@ -35,7 +35,7 @@ def register_webhook(account_id: int) -> int | None:
         requests.HTTPError: If API call fails after retries
     """
     token = get_or_refresh_token(account_id)
-    webhook_url = f"{WEBHOOK_BASE_URL}/hostaway/webhooks"
+    webhook_url = f"{WEBHOOK_BASE_URL}/api/v1/hostaway/webhooks"
 
     payload = {
         "isEnabled": 1,

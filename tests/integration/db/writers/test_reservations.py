@@ -4,6 +4,8 @@ Integration tests for reservations database writer.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sqlalchemy import select
 
@@ -14,7 +16,9 @@ from sync_hostaway.models.reservations import Reservation
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88888], indirect=True)
-def test_insert_reservations_creates_new_records(test_account_with_listing):
+def test_insert_reservations_creates_new_records(
+    test_account_with_listing: tuple[int, int]
+) -> None:
     """Test that insert_reservations creates new reservation records in database."""
     account_id, listing_id = test_account_with_listing
     data = [
@@ -50,7 +54,9 @@ def test_insert_reservations_creates_new_records(test_account_with_listing):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88887], indirect=True)
-def test_insert_reservations_updates_existing_when_payload_changes(test_account_with_listing):
+def test_insert_reservations_updates_existing_when_payload_changes(
+    test_account_with_listing: tuple[int, int]
+) -> None:
     """Test that insert_reservations updates existing records when payload changes."""
     account_id, listing_id = test_account_with_listing
     reservation_id = 7001
@@ -89,7 +95,9 @@ def test_insert_reservations_updates_existing_when_payload_changes(test_account_
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88886], indirect=True)
-def test_insert_reservations_skips_update_when_payload_unchanged(test_account_with_listing):
+def test_insert_reservations_skips_update_when_payload_unchanged(
+    test_account_with_listing: tuple[int, int]
+) -> None:
     """Test that insert_reservations skips update when payload is identical."""
     account_id, listing_id = test_account_with_listing
     reservation_id = 8001
@@ -110,6 +118,7 @@ def test_insert_reservations_skips_update_when_payload_unchanged(test_account_wi
         initial_result = conn.execute(
             select(Reservation.updated_at).where(Reservation.id == reservation_id)
         ).fetchone()
+        assert initial_result is not None
         initial_updated_at = initial_result[0]
 
     # Re-insert with identical payload
@@ -120,6 +129,7 @@ def test_insert_reservations_skips_update_when_payload_unchanged(test_account_wi
         final_result = conn.execute(
             select(Reservation.updated_at).where(Reservation.id == reservation_id)
         ).fetchone()
+        assert final_result is not None
         final_updated_at = final_result[0]
 
         assert (
@@ -129,7 +139,9 @@ def test_insert_reservations_skips_update_when_payload_unchanged(test_account_wi
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88885], indirect=True)
-def test_insert_reservations_skips_invalid_records(test_account_with_listing):
+def test_insert_reservations_skips_invalid_records(
+    test_account_with_listing: tuple[int, int]
+) -> None:
     """Test that insert_reservations skips records with missing required fields."""
     account_id, listing_id = test_account_with_listing
     data = [
@@ -154,10 +166,10 @@ def test_insert_reservations_skips_invalid_records(test_account_with_listing):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88884], indirect=True)
-def test_insert_reservations_handles_empty_list(test_account):
+def test_insert_reservations_handles_empty_list(test_account: int) -> None:
     """Test that insert_reservations handles empty data list gracefully."""
     account_id = test_account
-    data = []
+    data: list[dict[str, Any]] = []
 
     # Should not raise exception
     insert_reservations(engine, account_id, data)
@@ -172,7 +184,7 @@ def test_insert_reservations_handles_empty_list(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [88883], indirect=True)
-def test_insert_reservations_dry_run_mode(test_account_with_listing):
+def test_insert_reservations_dry_run_mode(test_account_with_listing: tuple[int, int]) -> None:
     """Test that insert_reservations in dry_run mode doesn't write to database."""
     account_id, listing_id = test_account_with_listing
     data = [

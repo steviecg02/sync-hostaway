@@ -28,7 +28,7 @@ def test_register_webhook_success(mock_post: Mock, mock_get_token: Mock) -> None
     # Check the payload sent to Hostaway
     call_kwargs = mock_post.call_args.kwargs
     assert call_kwargs["json"]["isEnabled"] == 1
-    assert "/hostaway/webhooks" in call_kwargs["json"]["url"]
+    assert "/api/v1/hostaway/webhooks" in call_kwargs["json"]["url"]
     assert call_kwargs["json"]["login"] is None
     assert call_kwargs["json"]["password"] is None
 
@@ -118,4 +118,4 @@ def test_register_webhook_uses_base_url(mock_post: Mock, mock_get_token: Mock) -
     register_webhook(account_id=12345)
 
     call_kwargs = mock_post.call_args.kwargs
-    assert call_kwargs["json"]["url"] == "https://test.example.com/hostaway/webhooks"
+    assert call_kwargs["json"]["url"] == "https://test.example.com/api/v1/hostaway/webhooks"

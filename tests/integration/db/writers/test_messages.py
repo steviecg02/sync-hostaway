@@ -4,6 +4,8 @@ Integration tests for messages database writer.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from sqlalchemy import select
 
@@ -14,7 +16,9 @@ from sync_hostaway.models.messages import MessageThread
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77777], indirect=True)
-def test_insert_messages_creates_new_threads(test_account_with_reservation):
+def test_insert_messages_creates_new_threads(
+    test_account_with_reservation: tuple[int, int]
+) -> None:
     """Test that insert_messages creates new message thread records."""
     account_id, reservation_id = test_account_with_reservation
     data = [
@@ -48,8 +52,8 @@ def test_insert_messages_creates_new_threads(test_account_with_reservation):
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77776], indirect=True)
 def test_insert_messages_updates_existing_threads_when_messages_change(
-    test_account_with_reservation,
-):
+    test_account_with_reservation: tuple[int, int],
+) -> None:
     """Test that insert_messages updates existing threads when raw_messages changes."""
     account_id, reservation_id = test_account_with_reservation
 
@@ -92,7 +96,9 @@ def test_insert_messages_updates_existing_threads_when_messages_change(
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77775], indirect=True)
-def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_reservation):
+def test_insert_messages_skips_update_when_messages_unchanged(
+    test_account_with_reservation: tuple[int, int]
+) -> None:
     """Test that insert_messages skips update when raw_messages is identical."""
     account_id, reservation_id = test_account_with_reservation
 
@@ -114,6 +120,7 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_
         initial_result = conn.execute(
             select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
         ).fetchone()
+        assert initial_result is not None
         initial_updated_at = initial_result[0]
 
     # Re-insert with identical messages
@@ -124,6 +131,7 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_
         final_result = conn.execute(
             select(MessageThread.updated_at).where(MessageThread.reservation_id == reservation_id)
         ).fetchone()
+        assert final_result is not None
         final_updated_at = final_result[0]
 
         assert (
@@ -133,10 +141,10 @@ def test_insert_messages_skips_update_when_messages_unchanged(test_account_with_
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77774], indirect=True)
-def test_insert_messages_handles_empty_list(test_account):
+def test_insert_messages_handles_empty_list(test_account: int) -> None:
     """Test that insert_messages handles empty data list gracefully."""
     account_id = test_account
-    data: list = []
+    data: list[dict[str, Any]] = []
 
     # Should not raise exception
     insert_messages(engine, account_id, data)
@@ -151,7 +159,7 @@ def test_insert_messages_handles_empty_list(test_account):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77773], indirect=True)
-def test_insert_messages_dry_run_mode(test_account_with_reservation):
+def test_insert_messages_dry_run_mode(test_account_with_reservation: tuple[int, int]) -> None:
     """Test that insert_messages in dry_run mode doesn't write to database."""
     account_id, reservation_id = test_account_with_reservation
     data = [
@@ -178,7 +186,9 @@ def test_insert_messages_dry_run_mode(test_account_with_reservation):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("test_account", [77772], indirect=True)
-def test_insert_messages_adds_account_id_to_all_rows(test_account_with_reservation):
+def test_insert_messages_adds_account_id_to_all_rows(
+    test_account_with_reservation: tuple[int, int]
+) -> None:
     """Test that insert_messages adds account_id to all message thread records."""
     account_id, reservation_id = test_account_with_reservation
     data = [

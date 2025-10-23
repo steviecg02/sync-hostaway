@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 import structlog
 
 from sync_hostaway.config import DEBUG
+from sync_hostaway.utils.datetime import utc_now
 
 logger = structlog.get_logger(__name__)
 
@@ -62,7 +63,7 @@ def normalize_raw_messages(raw_messages: List[Dict[str, Any]]) -> List[Dict[str,
 
     # Construct final grouped output
     normalized_threads = []
-    now = datetime.utcnow().isoformat()
+    now = utc_now().isoformat()
 
     for (reservation_id), messages in threads.items():
         # Sort by sent_at timestamp (guaranteed to be str from message_obj construction)
