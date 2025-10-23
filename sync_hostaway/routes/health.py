@@ -10,9 +10,8 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 
-from sync_hostaway.db.engine import engine
+from sync_hostaway.db.engine import check_engine_health
 
 logger = structlog.get_logger(__name__)
 
@@ -56,18 +55,14 @@ def readiness_check() -> JSONResponse:
     """
     checks = {}
 
-    # Check database connectivity
-    try:
-        with engine.connect() as conn:
-            # Simple query to verify database is accessible
-            conn.execute(text("SELECT 1"))
-            checks["database"] = "ok"
-    except Exception as e:
-        logger.error("readiness_check_failed", reason="database_not_accessible", error=str(e))
+    # Check database connectivity using engine health check
+    if check_engine_health():
+        checks["database"] = "ok"
+        return JSONResponse(content={"status": "ready", "checks": checks})
+    else:
+        logger.error("readiness_check_failed", reason="database_not_accessible")
         checks["database"] = "failed"
         return JSONResponse(
             status_code=503,
             content={"status": "not ready", "checks": checks},
         )
-
-    return JSONResponse(content={"status": "ready", "checks": checks})
