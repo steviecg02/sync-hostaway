@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from sync_hostaway.config import ALLOWED_ORIGINS
 from sync_hostaway.logging_config import setup_logging
+from sync_hostaway.middleware import RequestIDMiddleware
 from sync_hostaway.routes.accounts import router as accounts_router
 from sync_hostaway.routes.health import router as health_router
 from sync_hostaway.routes.metrics import router as metrics_router
@@ -20,6 +21,9 @@ app = FastAPI(
     description="API for managing Hostaway account sync and credentials",
     version="1.0.0",
 )
+
+# Add request ID tracing middleware
+app.add_middleware(RequestIDMiddleware)
 
 # Configure CORS
 app.add_middleware(
