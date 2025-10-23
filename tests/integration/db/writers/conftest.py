@@ -93,7 +93,7 @@ def test_account_with_listing(test_account: int) -> Generator[tuple[int, int], N
 
 @pytest.fixture
 def test_account_with_reservation(
-    test_account_with_listing: tuple[int, int]
+    test_account_with_listing: tuple[int, int],
 ) -> Generator[tuple[int, int], None, None]:
     """
     Create a test account with listing and reservation for message tests.
