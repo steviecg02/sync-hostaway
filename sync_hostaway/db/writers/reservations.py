@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
 from sync_hostaway.config import DEBUG
+from sync_hostaway.db.writers._upsert import upsert_with_distinct_check
 from sync_hostaway.models.reservations import Reservation
 
 logger = structlog.get_logger(__name__)
@@ -72,19 +72,12 @@ def insert_reservations(
         logger.info("Sample reservation to upsert:\n%s", json.dumps(rows[0], indent=2, default=str))
 
     with engine.begin() as conn:
-        stmt = insert(Reservation).values(rows)
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["id"],
-            set_={
-                "raw_payload": insert(Reservation).excluded.raw_payload,
-                "updated_at": insert(Reservation).excluded.updated_at,
-            },
-            where=Reservation.raw_payload.is_distinct_from(
-                insert(Reservation).excluded.raw_payload
-            ),
+        upsert_with_distinct_check(
+            conn=conn,
+            table=Reservation,
+            rows=rows,
+            conflict_column="id",
+            distinct_column="raw_payload",
         )
-
-        conn.execute(stmt)
 
     logger.info(f"Upserted {len(rows)} reservations into DB")

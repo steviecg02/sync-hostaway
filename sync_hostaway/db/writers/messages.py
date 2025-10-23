@@ -2,10 +2,10 @@ import json
 from typing import Any
 
 import structlog
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
 from sync_hostaway.config import DEBUG
+from sync_hostaway.db.writers._upsert import upsert_with_distinct_check
 from sync_hostaway.models.messages import MessageThread
 
 logger = structlog.get_logger(__name__)
@@ -40,19 +40,12 @@ def insert_messages(
         r["account_id"] = account_id
 
     with engine.begin() as conn:
-        stmt = insert(MessageThread).values(data)
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["reservation_id"],
-            set_={
-                "raw_messages": insert(MessageThread).excluded.raw_messages,
-                "updated_at": insert(MessageThread).excluded.updated_at,
-            },
-            where=MessageThread.raw_messages.is_distinct_from(
-                insert(MessageThread).excluded.raw_messages
-            ),
+        upsert_with_distinct_check(
+            conn=conn,
+            table=MessageThread,
+            rows=data,
+            conflict_column="reservation_id",
+            distinct_column="raw_messages",
         )
-
-        conn.execute(stmt)
 
     logger.info(f"Upserted {len(data)} message threads into DB")

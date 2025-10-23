@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
 from sync_hostaway.config import DEBUG
+from sync_hostaway.db.writers._upsert import upsert_with_distinct_check
 from sync_hostaway.models.listings import Listing
 
 logger = structlog.get_logger(__name__)
@@ -57,18 +57,13 @@ def insert_listings(
         logger.info(f"Sample listing to upsert {json.dumps(rows[0], default=str, indent=2)}")
 
     with engine.begin() as conn:
-        stmt = insert(Listing).values(rows)
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["id"],
-            set_={
-                "account_id": insert(Listing).excluded.account_id,
-                "raw_payload": insert(Listing).excluded.raw_payload,
-                "updated_at": insert(Listing).excluded.updated_at,
-            },
-            where=Listing.raw_payload.is_distinct_from(insert(Listing).excluded.raw_payload),
+        upsert_with_distinct_check(
+            conn=conn,
+            table=Listing,
+            rows=rows,
+            conflict_column="id",
+            distinct_column="raw_payload",
+            update_columns=["account_id", "raw_payload", "updated_at"],
         )
-
-        conn.execute(stmt)
 
     logger.info(f"Upserted {len(rows)} listings into DB")
