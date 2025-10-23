@@ -9,6 +9,15 @@ from sync_hostaway.models.base import Base
 
 
 class Reservation(Base):
+    """
+    ORM model for Hostaway reservations (bookings).
+
+    Stores the complete raw JSON payload from Hostaway's reservations API endpoint.
+    Each reservation represents a guest booking for a specific listing within a date range.
+    The raw_payload contains all booking details including guest information, check-in/out
+    dates, pricing, payment status, and booking channel information.
+    """
+
     __tablename__ = "reservations"
     __table_args__ = {"schema": SCHEMA}
 

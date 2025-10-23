@@ -7,6 +7,15 @@ from sync_hostaway.models.base import Base
 
 
 class Listing(Base):
+    """
+    ORM model for Hostaway property listings.
+
+    Stores the complete raw JSON payload from Hostaway's listing API endpoint.
+    Each listing belongs to a Hostaway account and represents a rentable property.
+    The raw_payload contains all listing details including address, amenities,
+    photos, pricing, and availability rules.
+    """
+
     __tablename__ = "listings"
     __table_args__ = {"schema": SCHEMA}
 
