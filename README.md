@@ -86,6 +86,22 @@ uvicorn sync_hostaway.main:app --reload
 
 The API will be available at `http://localhost:8000`. Visit `http://localhost:8000/docs` for interactive API documentation.
 
+**6. Create your first account:**
+
+Add your Hostaway credentials to `.env`:
+```bash
+HOSTAWAY_ACCOUNT_ID=12345
+HOSTAWAY_CLIENT_SECRET=your-hostaway-client-secret
+```
+
+Then create the account (this triggers an automatic sync):
+```bash
+source .env
+curl -X POST http://localhost:8000/api/v1/hostaway/accounts \
+  -H "Content-Type: application/json" \
+  -d '{"account_id": '"$HOSTAWAY_ACCOUNT_ID"', "client_secret": "'"$HOSTAWAY_CLIENT_SECRET"'"}'
+```
+
 ---
 
 ## Production Deployment (Using Pre-built Container)
@@ -115,6 +131,22 @@ docker-compose down
 ```
 
 **Container images are automatically built and pushed to GitHub Container Registry on every push to `main`.**
+
+**Create your first account:**
+
+Add your Hostaway credentials to `.env`:
+```bash
+HOSTAWAY_ACCOUNT_ID=12345
+HOSTAWAY_CLIENT_SECRET=your-hostaway-client-secret
+```
+
+Then create the account (this triggers an automatic sync):
+```bash
+source .env
+curl -X POST http://localhost:8000/api/v1/hostaway/accounts \
+  -H "Content-Type: application/json" \
+  -d '{"account_id": '"$HOSTAWAY_ACCOUNT_ID"', "client_secret": "'"$HOSTAWAY_CLIENT_SECRET"'"}'
+```
 
 ---
 

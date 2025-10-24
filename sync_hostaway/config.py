@@ -29,7 +29,16 @@ if not WEBHOOK_USERNAME or not WEBHOOK_PASSWORD:
     raise ValueError("WEBHOOK_USERNAME and WEBHOOK_PASSWORD must be set in the environment")
 
 # Webhook Base URL (e.g., https://your-domain.com)
+# Note: Hostaway does not allow ports in webhook URLs
 WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL", "")
 
 if not WEBHOOK_BASE_URL:
     raise ValueError("WEBHOOK_BASE_URL must be set in the environment")
+
+# Validate that WEBHOOK_BASE_URL doesn't contain a port
+if ":" in WEBHOOK_BASE_URL.split("//")[-1]:
+    raise ValueError(
+        "WEBHOOK_BASE_URL must not contain a port number. "
+        "Hostaway rejects webhook URLs with ports. "
+        f"Invalid URL: {WEBHOOK_BASE_URL}"
+    )
