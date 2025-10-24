@@ -137,6 +137,16 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
 
     Authentication: HTTP Basic Auth with global WEBHOOK_USERNAME/WEBHOOK_PASSWORD
 
+    Expected payload structure from Hostaway:
+        {
+            "object": "reservation",
+            "event": "reservation.updated",
+            "accountId": 59808,
+            "payload": {
+                "data": {...}
+            }
+        }
+
     Args:
         request: FastAPI request containing webhook payload
 
@@ -168,9 +178,11 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
         "webhook_received_raw",
         raw_payload=payload,
         payload_keys=list(payload.keys()),
-        event_type=payload.get("eventType"),
+        event_field=payload.get("event"),
+        event_type_field=payload.get("eventType"),
         account_id=payload.get("accountId"),
         data_field=payload.get("data"),
+        payload_field=payload.get("payload"),
         has_data=bool(payload.get("data")),
         data_keys=list(payload.get("data", {}).keys()) if payload.get("data") else [],
         full_headers={k: v for k, v in request.headers.items()},
@@ -178,19 +190,19 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
         user_agent=request.headers.get("user-agent"),
     )
 
-    # Validate eventType
-    event_type: str | None = payload.get("eventType")
+    # Validate event field (Hostaway uses "event" not "eventType")
+    event_type: str | None = payload.get("event") or payload.get("eventType")
     if not event_type:
         logger.warning("webhook_missing_event_type", payload=payload)
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": "Missing eventType"},
+            content={"error": "Missing event or eventType field"},
         )
 
     # Validate accountId
     account_id: int | None = payload.get("accountId")
     if not account_id:
-        logger.warning("Webhook missing accountId: eventType=%s", event_type)
+        logger.warning("Webhook missing accountId: event=%s", event_type)
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Missing accountId"},
@@ -205,6 +217,18 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
                 content={"error": f"Account {account_id} not found"},
             )
 
+    # Normalize payload structure (Hostaway uses nested payload.data)
+    # Transform: {"payload": {"data": {...}}} -> {"data": {...}}
+    normalized_payload = payload
+    if "payload" in payload and "data" in payload["payload"]:
+        normalized_payload = payload["payload"]
+        logger.debug(
+            "webhook_normalized_payload",
+            event_type=event_type,
+            account_id=account_id,
+            original_structure="nested_payload",
+        )
+
     # Route to appropriate handler
     event_handlers = {
         "reservation.created": handle_reservation_created,
@@ -215,12 +239,16 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
     handler = event_handlers.get(event_type)
     if handler:
         try:
-            handler(account_id, payload)
+            handler(account_id, normalized_payload)
             logger.info(
                 "webhook_processed_success",
                 event_type=event_type,
                 account_id=account_id,
-                data_keys=list(payload.get("data", {}).keys()) if payload.get("data") else [],
+                data_keys=(
+                    list(normalized_payload.get("data", {}).keys())
+                    if normalized_payload.get("data")
+                    else []
+                ),
             )
         except Exception as e:
             logger.exception(
