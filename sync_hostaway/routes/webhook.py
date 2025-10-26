@@ -50,23 +50,37 @@ def handle_reservation_created(account_id: int, payload: dict[str, Any]) -> None
         account_id: Hostaway account ID
         payload: Webhook payload containing reservation data
     """
-    reservation_data = payload.get("data", {})
-    if not reservation_data:
-        logger.warning(
-            "reservation_created_missing_data",
-            account_id=account_id,
-            payload=payload,
-        )
-        return
+    try:
+        reservation_data = payload.get("data", {})
+        if not reservation_data:
+            logger.warning(
+                "reservation_missing_data",
+                event_type="reservation.created",
+                account_id=account_id,
+                full_payload=payload,
+            )
+            return
 
-    insert_reservations(engine, account_id, [reservation_data])
-    logger.info(
-        "reservation_created_processed",
-        account_id=account_id,
-        reservation_id=reservation_data.get("id"),
-        listing_id=reservation_data.get("listingMapId"),
-        guest_name=reservation_data.get("guestName"),
-    )
+        insert_reservations(engine, account_id, [reservation_data])
+
+        # Log success with key identifiers only
+        logger.info(
+            "reservation_created",
+            account_id=account_id,
+            reservation_id=reservation_data.get("id"),
+            listing_id=reservation_data.get("listingMapId"),
+            guest_name=reservation_data.get("guestName"),
+            status=reservation_data.get("status"),
+        )
+    except Exception as e:
+        logger.error(
+            "reservation_processing_failed",
+            event_type="reservation.created",
+            account_id=account_id,
+            error=str(e),
+            full_payload=payload,
+        )
+        raise
 
 
 def handle_reservation_updated(account_id: int, payload: dict[str, Any]) -> None:
@@ -77,24 +91,37 @@ def handle_reservation_updated(account_id: int, payload: dict[str, Any]) -> None
         account_id: Hostaway account ID
         payload: Webhook payload containing reservation data
     """
-    reservation_data = payload.get("data", {})
-    if not reservation_data:
-        logger.warning(
-            "reservation_updated_missing_data",
-            account_id=account_id,
-            payload=payload,
-        )
-        return
+    try:
+        reservation_data = payload.get("data", {})
+        if not reservation_data:
+            logger.warning(
+                "reservation_missing_data",
+                event_type="reservation.updated",
+                account_id=account_id,
+                full_payload=payload,
+            )
+            return
 
-    insert_reservations(engine, account_id, [reservation_data])
-    logger.info(
-        "reservation_updated_processed",
-        account_id=account_id,
-        reservation_id=reservation_data.get("id"),
-        listing_id=reservation_data.get("listingMapId"),
-        guest_name=reservation_data.get("guestName"),
-        status=reservation_data.get("status"),
-    )
+        insert_reservations(engine, account_id, [reservation_data])
+
+        # Log success with key identifiers only
+        logger.info(
+            "reservation_updated",
+            account_id=account_id,
+            reservation_id=reservation_data.get("id"),
+            listing_id=reservation_data.get("listingMapId"),
+            guest_name=reservation_data.get("guestName"),
+            status=reservation_data.get("status"),
+        )
+    except Exception as e:
+        logger.error(
+            "reservation_processing_failed",
+            event_type="reservation.updated",
+            account_id=account_id,
+            error=str(e),
+            full_payload=payload,
+        )
+        raise
 
 
 def handle_message_received(account_id: int, payload: dict[str, Any]) -> None:
@@ -102,22 +129,56 @@ def handle_message_received(account_id: int, payload: dict[str, Any]) -> None:
     Handle message.received webhook event.
 
     TODO: Implement full conversation fetching logic.
-    For now, this is a stub that logs the full payload structure
-    so we can understand what Hostaway sends and implement proper handling.
+    For now, this is a stub that logs key message identifiers
+    so we can track message events without persisting them.
 
     Args:
         account_id: Hostaway account ID
         payload: Webhook payload containing message data
     """
-    logger.info(
-        "message_webhook_received_STUB",
-        account_id=account_id,
-        payload_structure=payload,
-        data_field=payload.get("data"),
-        message="This is a STUB - logging payload structure for future implementation",
-    )
-    # TODO: Extract conversationId, fetch full conversation, normalize, insert
-    # Example expected logic (once we see real payloads):
+    try:
+        message_data = payload.get("data", {})
+        if not message_data:
+            logger.warning(
+                "message_missing_data",
+                account_id=account_id,
+                full_payload=payload,
+            )
+            return
+
+        # Extract key identifiers from message data
+        conversation_id = message_data.get("conversationId")
+        message_id = message_data.get("id")
+        reservation_id = message_data.get("reservationId")
+        listing_id = message_data.get("listingMapId")
+        body = message_data.get("body", "")
+        is_incoming = message_data.get("isIncoming", 0)
+
+        # Truncate body for preview (first 50 chars)
+        body_preview = (body[:50] + "...") if len(body) > 50 else body
+        direction = "incoming" if is_incoming == 1 else "outgoing"
+
+        logger.info(
+            "message_received_stub",
+            account_id=account_id,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            reservation_id=reservation_id,
+            listing_id=listing_id,
+            direction=direction,
+            body_preview=body_preview,
+            note="Message logged but not persisted (stub)",
+        )
+    except Exception as e:
+        logger.error(
+            "message_parsing_failed",
+            account_id=account_id,
+            error=str(e),
+            full_payload=payload,
+        )
+        raise
+
+    # TODO: Implement persistence
     # conversation_id = payload.get("data", {}).get("conversationId")
     # if conversation_id:
     #     conversation = fetch_conversation(account_id, conversation_id)
@@ -172,22 +233,12 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
             content={"error": "Invalid JSON"},
         )
 
-    # LOG RAW WEBHOOK PAYLOAD - VERBOSE for analysis
-    # This logs EVERYTHING so you can see exactly what Hostaway sends
+    # Log incoming webhook with minimal info
     logger.info(
-        "webhook_received_raw",
-        raw_payload=payload,
-        payload_keys=list(payload.keys()),
-        event_field=payload.get("event"),
-        event_type_field=payload.get("eventType"),
+        "webhook_received",
+        event_type=payload.get("event") or payload.get("eventType"),
         account_id=payload.get("accountId"),
-        data_field=payload.get("data"),
-        payload_field=payload.get("payload"),
-        has_data=bool(payload.get("data")),
-        data_keys=list(payload.get("data", {}).keys()) if payload.get("data") else [],
-        full_headers={k: v for k, v in request.headers.items()},
-        content_type=request.headers.get("content-type"),
-        user_agent=request.headers.get("user-agent"),
+        object_type=payload.get("object"),
     )
 
     # Validate event field (Hostaway uses "event" not "eventType")
@@ -240,16 +291,7 @@ async def receive_hostaway_webhook(request: Request) -> JSONResponse:
     if handler:
         try:
             handler(account_id, normalized_payload)
-            logger.info(
-                "webhook_processed_success",
-                event_type=event_type,
-                account_id=account_id,
-                data_keys=(
-                    list(normalized_payload.get("data", {}).keys())
-                    if normalized_payload.get("data")
-                    else []
-                ),
-            )
+            # Handler-specific logs already indicate success
         except Exception as e:
             logger.exception(
                 "webhook_processing_failed",
