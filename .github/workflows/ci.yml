@@ -76,10 +76,91 @@ jobs:
         run: |
           PYTHONPATH=. pytest --cov=sync_hostaway --cov-report=term -v
 
+  docker-test:
+    name: Docker Container Test
+    runs-on: ubuntu-latest
+    needs: test
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for container
+        run: |
+          cat > .env << EOF
+          DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+          ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+          LOG_LEVEL=INFO
+          DRY_RUN=false
+          WEBHOOK_USERNAME=test-user
+          WEBHOOK_PASSWORD=test-pass
+          WEBHOOK_BASE_URL=https://test.example.com
+          EOF
+
+      - name: Build Docker image
+        run: docker compose build
+
+      - name: Start containers
+        run: docker compose up -d
+
+      - name: Wait for application health
+        run: |
+          timeout=60
+          while [ $timeout -gt 0 ]; do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Health check passed"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout - 2))
+            if [ $timeout -le 0 ]; then
+              echo "❌ Health check failed - timeout"
+              docker compose logs app
+              exit 1
+            fi
+          done
+
+      - name: Check readiness endpoint
+        run: |
+          if curl -sf http://localhost:8000/ready | grep -q '"status":"ready"'; then
+            echo "✅ Readiness check passed"
+          else
+            echo "❌ Readiness check failed"
+            docker compose logs app
+            exit 1
+          fi
+
+      - name: Scan logs for errors
+        run: |
+          if docker compose logs app | grep -iE "(error|exception|traceback)" | grep -v "uvicorn.error"; then
+            echo "❌ Found errors in logs"
+            exit 1
+          else
+            echo "✅ No errors found in logs"
+          fi
+
+      - name: Cleanup containers
+        if: always()
+        run: docker compose down -v
+
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, docker-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
