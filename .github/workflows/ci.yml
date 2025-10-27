@@ -99,23 +99,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create .env file for container
-        run: |
-          cat > .env << EOF
-          DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
-          ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
-          LOG_LEVEL=INFO
-          DRY_RUN=false
-          WEBHOOK_USERNAME=test-user
-          WEBHOOK_PASSWORD=test-pass
-          WEBHOOK_BASE_URL=https://test.example.com
-          EOF
-
       - name: Build Docker image
-        run: docker compose build
+        run: docker build -t sync-hostaway .
 
-      - name: Start containers
-        run: docker compose up -d
+      - name: Start application container
+        run: |
+          docker run -d \
+            --name sync-hostaway-app \
+            --network host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+            -e ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000 \
+            -e LOG_LEVEL=INFO \
+            -e DRY_RUN=false \
+            -e WEBHOOK_USERNAME=test-user \
+            -e WEBHOOK_PASSWORD=test-pass \
+            -e WEBHOOK_BASE_URL=https://test.example.com \
+            sync-hostaway
 
       - name: Wait for application health
         run: |
@@ -129,7 +128,7 @@ jobs:
             timeout=$((timeout - 2))
             if [ $timeout -le 0 ]; then
               echo "❌ Health check failed - timeout"
-              docker compose logs app
+              docker logs sync-hostaway-app
               exit 1
             fi
           done
@@ -140,13 +139,13 @@ jobs:
             echo "✅ Readiness check passed"
           else
             echo "❌ Readiness check failed"
-            docker compose logs app
+            docker logs sync-hostaway-app
             exit 1
           fi
 
       - name: Scan logs for errors
         run: |
-          if docker compose logs app | grep -iE "(error|exception|traceback)" | grep -v "uvicorn.error"; then
+          if docker logs sync-hostaway-app | grep -iE "(error|exception|traceback)" | grep -v "uvicorn.error"; then
             echo "❌ Found errors in logs"
             exit 1
           else
@@ -155,7 +154,7 @@ jobs:
 
       - name: Cleanup containers
         if: always()
-        run: docker compose down -v
+        run: docker rm -f sync-hostaway-app || true
 
   build-and-push:
     name: Build & Push Docker Image
