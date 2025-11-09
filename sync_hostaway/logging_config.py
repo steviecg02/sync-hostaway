@@ -21,7 +21,8 @@ def setup_logging() -> None:
     """
     # Configure standard library logging first
     logging.basicConfig(
-        format="%(message)s",
+        format="[%(asctime)s] %(levelname)s in %(name)s:%(lineno)d: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stdout,
         level=LOG_LEVEL,
     )
@@ -33,9 +34,12 @@ def setup_logging() -> None:
         "botocore",
         "boto3",
         "uvicorn.access",
-        "uvicorn.error",
     ]:
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+    # Enable DEBUG logging for uvicorn.error to see details about invalid HTTP requests
+    # The h11.RemoteProtocolError exception will show what's wrong with the request
+    logging.getLogger("uvicorn.error").setLevel(logging.DEBUG)
 
     # Configure structlog
     # Choose renderer based on log level (JSON for production, Console for dev)

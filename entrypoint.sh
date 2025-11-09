@@ -1,8 +1,12 @@
 #!/bin/bash
 set -e
 
-echo "Running database migrations..."
+log() {
+    echo "[$(date -u +"%Y-%m-%d %H:%M:%S")] $*"
+}
+
+log "Running database migrations..."
 alembic upgrade head
 
-echo "Starting application..."
+log "Starting application..."
 exec "$@"
